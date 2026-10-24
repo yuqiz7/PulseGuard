@@ -5,6 +5,9 @@ import java.time.Instant;
 import java.util.List;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 // AI-assisted: Claude (Anthropic), generated, reviewed by Yuqi Zhang
 /**
@@ -43,5 +46,7 @@ public interface AnomalyRepository extends JpaRepository<Anomaly, Long> {
    * @param metricId the metric ID
    * @return the number of deleted anomalies
    */
-  long deleteByMetricId(Long metricId);
+  @Modifying(flushAutomatically = true, clearAutomatically = true)
+  @Query("delete from Anomaly a where a.metricId = :metricId")
+  int deleteByMetricId(@Param("metricId") Long metricId);
 }
