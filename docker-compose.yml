@@ -1,0 +1,16 @@
+# Local PostgreSQL for development. Start: docker compose up -d   Stop: docker compose down
+services:
+  postgres:
+    image: postgres:16
+    container_name: pulseguard-postgres
+    environment:
+      POSTGRES_DB: pulseguard
+      POSTGRES_USER: pulseguard
+      POSTGRES_PASSWORD: pulseguard
+    ports:
+      - "5432:5432"
+    volumes:
+      - pulseguard-data:/var/lib/postgresql/data
+
+volumes:
+  pulseguard-data:
