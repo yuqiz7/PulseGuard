@@ -1,0 +1,119 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>EwmaDetector.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">pulseguard</a> &gt; <a href="index.source.html" class="el_package">edu.columbia.pulseguard.detection</a> &gt; <span class="el_source">EwmaDetector.java</span></div><h1>EwmaDetector.java</h1><pre class="source lang-java linenums">package edu.columbia.pulseguard.detection;
+
+import edu.columbia.pulseguard.model.DetectionMethod;
+
+/**
+ * Detects anomalies using an exponentially weighted moving
+ * average (EWMA) and exponentially weighted variance.
+ *
+ * &lt;p&gt;Each value is evaluated against the previous statistical
+ * state before that state is updated.
+ */
+<span class="fc" id="L12">public final class EwmaDetector implements AnomalyDetector {</span>
+
+  @Override
+  public DetectionResult evaluate(MetricRule rule, DetectorState state, double value) {
+<span class="fc" id="L16">    validateRule(rule);</span>
+<span class="fc" id="L17">    validateState(state);</span>
+<span class="fc" id="L18">    validateValue(value);</span>
+
+<span class="fc bfc" id="L20" title="All 2 branches covered.">    if (state.sampleCount() == 0) {</span>
+<span class="fc" id="L21">      return new DetectionResult(false, 0.0, value, value);</span>
+    }
+
+<span class="fc" id="L24">    double tolerance = rule.param(RuleParams.TOLERANCE, RuleParams.DEFAULT_TOLERANCE);</span>
+<span class="fc" id="L25">    double mean = state.ewma();</span>
+<span class="fc" id="L26">    double variance = state.ewmaVariance();</span>
+<span class="fc" id="L27">    double stddev = Math.sqrt(variance);</span>
+<span class="fc" id="L28">    double margin = tolerance * stddev;</span>
+<span class="fc" id="L29">    double expectedLow = mean - margin;</span>
+<span class="fc" id="L30">    double expectedHigh = mean + margin;</span>
+
+<span class="pc bpc" id="L32" title="2 of 4 branches missed.">    if (!Double.isFinite(expectedLow) || !Double.isFinite(expectedHigh)) {</span>
+<span class="nc" id="L33">      throw new IllegalArgumentException(&quot;EWMA expected range overflow&quot;);</span>
+    }
+
+<span class="fc" id="L36">    double difference = Math.abs(value - mean);</span>
+    double score;
+    boolean exceedsTolerance;
+
+<span class="fc bfc" id="L40" title="All 2 branches covered.">    if (stddev == 0.0) {</span>
+<span class="fc bfc" id="L41" title="All 2 branches covered.">      exceedsTolerance = difference &gt; 0.0;</span>
+<span class="fc bfc" id="L42" title="All 2 branches covered.">      score = exceedsTolerance ? Double.MAX_VALUE : 0.0;</span>
+    } else {
+<span class="fc" id="L44">      double rawScore = difference / stddev;</span>
+<span class="pc bpc" id="L45" title="1 of 2 branches missed.">      score = Double.isFinite(rawScore) ? rawScore : Double.MAX_VALUE;</span>
+<span class="fc bfc" id="L46" title="All 2 branches covered.">      exceedsTolerance = rawScore &gt; tolerance;</span>
+    }
+
+<span class="fc bfc" id="L49" title="All 2 branches covered.">    boolean warmedUp = state.sampleCount() &gt;= rule.warmUpSamples();</span>
+<span class="fc bfc" id="L50" title="All 4 branches covered.">    boolean anomaly = warmedUp &amp;&amp; exceedsTolerance;</span>
+<span class="fc" id="L51">    return new DetectionResult(anomaly, score, expectedLow, expectedHigh);</span>
+  }
+
+  @Override
+  public DetectorState update(MetricRule rule, DetectorState state, double value) {
+<span class="fc" id="L56">    validateRule(rule);</span>
+<span class="fc" id="L57">    validateState(state);</span>
+<span class="fc" id="L58">    validateValue(value);</span>
+
+<span class="fc bfc" id="L60" title="All 2 branches covered.">    if (state.sampleCount() == 0) {</span>
+<span class="fc" id="L61">      return new DetectorState(1, value, 0.0, state.window());</span>
+    }
+
+<span class="fc" id="L64">    double alpha = rule.param(RuleParams.ALPHA, RuleParams.DEFAULT_ALPHA);</span>
+<span class="fc" id="L65">    double oldMean = state.ewma();</span>
+<span class="fc" id="L66">    double oldVariance = state.ewmaVariance();</span>
+<span class="fc" id="L67">    double difference = value - oldMean;</span>
+<span class="fc" id="L68">    double newMean = oldMean + alpha * difference;</span>
+<span class="fc" id="L69">    double newVariance = (1.0 - alpha) * (oldVariance + alpha * difference * difference);</span>
+
+<span class="pc bpc" id="L71" title="1 of 4 branches missed.">    if (!Double.isFinite(newMean) || !Double.isFinite(newVariance)) {</span>
+<span class="fc" id="L72">      throw new IllegalArgumentException(&quot;EWMA statistics overflow&quot;);</span>
+    }
+
+<span class="fc" id="L75">    return new DetectorState(state.sampleCount() + 1, newMean, newVariance, state.window());</span>
+  }
+
+  private void validateRule(MetricRule rule) {
+<span class="fc bfc" id="L79" title="All 2 branches covered.">    if (rule.method() != DetectionMethod.EWMA) {</span>
+<span class="fc" id="L80">      throw new IllegalArgumentException(&quot;Expected EWMA detection method&quot;);</span>
+    }
+
+<span class="fc" id="L83">    double alpha = rule.param(RuleParams.ALPHA, RuleParams.DEFAULT_ALPHA);</span>
+<span class="fc" id="L84">    double tolerance = rule.param(RuleParams.TOLERANCE, RuleParams.DEFAULT_TOLERANCE);</span>
+<span class="fc bfc" id="L85" title="All 6 branches covered.">    if (!Double.isFinite(alpha) || alpha &lt;= 0.0 || alpha &gt;= 1.0) {</span>
+<span class="fc" id="L86">      throw new IllegalArgumentException(&quot;EWMA alpha must be strictly between 0 and 1&quot;);</span>
+    }
+<span class="fc bfc" id="L88" title="All 4 branches covered.">    if (!Double.isFinite(tolerance) || tolerance &lt;= 0.0) {</span>
+<span class="fc" id="L89">      throw new IllegalArgumentException(&quot;EWMA tolerance must be positive and finite&quot;);</span>
+    }
+<span class="pc bpc" id="L91" title="1 of 2 branches missed.">    if (rule.warmUpSamples() &lt; 0) {</span>
+<span class="nc" id="L92">      throw new IllegalArgumentException(&quot;Warm-up samples cannot be negative&quot;);</span>
+    }
+<span class="fc" id="L94">  }</span>
+
+  private void validateState(DetectorState state) {
+<span class="pc bpc" id="L97" title="1 of 2 branches missed.">    if (state.sampleCount() &lt; 0) {</span>
+<span class="nc" id="L98">      throw new IllegalArgumentException(&quot;Sample count cannot be negative&quot;);</span>
+    }
+<span class="fc bfc" id="L100" title="All 2 branches covered.">    if (state.sampleCount() == 0) {</span>
+<span class="fc" id="L101">      return;</span>
+    }
+<span class="pc bpc" id="L103" title="1 of 4 branches missed.">    if (state.ewma() == null || state.ewmaVariance() == null) {</span>
+<span class="fc" id="L104">      throw new IllegalArgumentException(&quot;EWMA state is incomplete&quot;);</span>
+    }
+<span class="pc bpc" id="L106" title="1 of 2 branches missed.">    if (!Double.isFinite(state.ewma())</span>
+<span class="pc bpc" id="L107" title="1 of 2 branches missed.">        || !Double.isFinite(state.ewmaVariance())</span>
+<span class="fc bfc" id="L108" title="All 2 branches covered.">        || state.ewmaVariance() &lt; 0.0) {</span>
+<span class="fc" id="L109">      throw new IllegalArgumentException(&quot;EWMA state is invalid&quot;);</span>
+    }
+<span class="fc" id="L111">  }</span>
+
+  private void validateValue(double value) {
+<span class="fc bfc" id="L114" title="All 2 branches covered.">    if (!Double.isFinite(value)) {</span>
+<span class="fc" id="L115">      throw new IllegalArgumentException(&quot;Metric value must be finite&quot;);</span>
+    }
+<span class="fc" id="L117">  }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.13.202504020838</span></div></body></html>
