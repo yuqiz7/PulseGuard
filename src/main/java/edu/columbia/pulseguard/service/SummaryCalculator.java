@@ -26,8 +26,8 @@ public final class SummaryCalculator {
     if (points.isEmpty()) {
       return new SummaryStats(0, 0, null, null, null, null, null, null);
     }
-    long count = points.size();
-    long anomalies = points.stream().filter(DataPoint::isAnomaly).count();
+    final long count = points.size();
+    final long anomalies = points.stream().filter(DataPoint::isAnomaly).count();
     double sum = 0;
     double min = Double.POSITIVE_INFINITY;
     double max = Double.NEGATIVE_INFINITY;

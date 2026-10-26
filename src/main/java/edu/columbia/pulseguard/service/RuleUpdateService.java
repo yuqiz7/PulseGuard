@@ -83,17 +83,17 @@ public class RuleUpdateService {
   @Transactional
   public RuleUpdateResponse update(String clientId, Long metricId, UpdateRuleRequest request,
       boolean dryRun) {
-    Metric metric = lookupService.requireOwnedMetric(clientId, metricId);
+    final Metric metric = lookupService.requireOwnedMetric(clientId, metricId);
     Map<String, Double> params = RuleValidator.normalizeParams(request.method(), request.params());
     int warmUpSamples = RuleValidator.normalizeWarmUp(request.method(), request.warmUpSamples());
     MetricRule newRule = new MetricRule(request.method(), params, warmUpSamples);
-    MetricStatistics stats = statisticsRepository.findByIdForUpdate(metricId)
+    final MetricStatistics stats = statisticsRepository.findByIdForUpdate(metricId)
         .orElseGet(() -> new MetricStatistics(metricId));
 
     List<DataPoint> history = new ArrayList<>(dataPointRepository
         .findByMetricIdOrderByTsDesc(metricId, PageRequest.of(0, REPLAY_LIMIT)));
     Collections.reverse(history);
-    long totalPoints = dataPointRepository.countByMetricId(metricId);
+    final long totalPoints = dataPointRepository.countByMetricId(metricId);
 
     DetectorState state = DetectorState.empty();
     List<DetectionResult> results = new ArrayList<>();
