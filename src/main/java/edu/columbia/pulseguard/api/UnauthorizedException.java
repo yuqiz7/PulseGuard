@@ -2,7 +2,7 @@ package edu.columbia.pulseguard.api;
 
 import org.springframework.http.HttpStatus;
 
-// AI-assisted: Claude (Anthropic), generated, reviewed by Yuqi Zhang
+// AI-generated: Claude (Anthropic)
 /**
  * 401 Unauthorized: the X-Client-Id header is missing or blank.
  */

@@ -5,7 +5,7 @@ import edu.columbia.pulseguard.model.Metric;
 import java.util.Map;
 import java.util.Objects;
 
-// AI-assisted: Claude (Anthropic), generated, reviewed by Yuqi Zhang
+// AI-generated: Claude (Anthropic)
 /**
  * Immutable detection rule passed to the detection engine.
  *

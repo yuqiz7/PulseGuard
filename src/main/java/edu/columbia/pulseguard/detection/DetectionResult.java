@@ -1,6 +1,6 @@
 package edu.columbia.pulseguard.detection;
 
-// AI-assisted: Claude (Anthropic), generated, reviewed by Yuqi Zhang
+// AI-generated: Claude (Anthropic)
 /**
  * Verdict for one value.
  *

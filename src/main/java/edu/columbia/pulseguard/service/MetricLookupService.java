@@ -7,7 +7,7 @@ import edu.columbia.pulseguard.model.Metric;
 import edu.columbia.pulseguard.repository.MetricRepository;
 import org.springframework.stereotype.Service;
 
-// AI-assisted: Claude (Anthropic), generated, reviewed by Yuqi Zhang
+// AI-generated: Claude (Anthropic)
 /**
  * Shared access checks: validates the client ID and loads metrics owned by that client.
  *
