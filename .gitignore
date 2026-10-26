@@ -15,3 +15,11 @@ buildNumber.properties
 .project
 # JDT-specific (Eclipse Java Development Tools)
 .classpath
+
+# Local H2 database files (h2 profile)
+data/
+
+# IDE
+.idea/
+*.iml
+.vscode/
