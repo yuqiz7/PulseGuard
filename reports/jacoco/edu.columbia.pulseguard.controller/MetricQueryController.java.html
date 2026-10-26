@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>MetricQueryController.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">pulseguard</a> &gt; <a href="index.source.html" class="el_package">edu.columbia.pulseguard.controller</a> &gt; <span class="el_source">MetricQueryController.java</span></div><h1>MetricQueryController.java</h1><pre class="source lang-java linenums">package edu.columbia.pulseguard.controller;
+
+import edu.columbia.pulseguard.api.ApiHeaders;
+import edu.columbia.pulseguard.dto.AnomalyQueryResponse;
+import edu.columbia.pulseguard.dto.MetricSummaryResponse;
+import edu.columbia.pulseguard.dto.RuleUpdateResponse;
+import edu.columbia.pulseguard.dto.UpdateRuleRequest;
+import edu.columbia.pulseguard.service.AnomalyQueryService;
+import edu.columbia.pulseguard.service.MetricSummaryService;
+import edu.columbia.pulseguard.service.RuleUpdateService;
+import jakarta.validation.Valid;
+import java.time.Instant;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+
+// AI-generated: Claude (Anthropic)
+/**
+ * Endpoints for querying anomalies, summarizing metrics and updating detection rules.
+ */
+@RestController
+@RequestMapping(&quot;/metrics/{metricId}&quot;)
+public class MetricQueryController {
+
+  private final AnomalyQueryService anomalyQueryService;
+  private final MetricSummaryService summaryService;
+  private final RuleUpdateService ruleUpdateService;
+
+  /**
+   * Creates the controller.
+   *
+   * @param anomalyQueryService queryAnomalies implementation
+   * @param summaryService getMetricSummary implementation
+   * @param ruleUpdateService updateDetectionRule implementation
+   */
+  public MetricQueryController(AnomalyQueryService anomalyQueryService,
+<span class="fc" id="L42">      MetricSummaryService summaryService, RuleUpdateService ruleUpdateService) {</span>
+<span class="fc" id="L43">    this.anomalyQueryService = anomalyQueryService;</span>
+<span class="fc" id="L44">    this.summaryService = summaryService;</span>
+<span class="fc" id="L45">    this.ruleUpdateService = ruleUpdateService;</span>
+<span class="fc" id="L46">  }</span>
+
+  /**
+   * queryAnomalies: GET /metrics/{metricId}/anomalies.
+   *
+   * @param clientId the X-Client-Id header
+   * @param metricId the metric ID
+   * @param from inclusive start (ISO-8601)
+   * @param to inclusive end (ISO-8601)
+   * @param minScore minimum anomaly score (default 0)
+   * @param limit maximum number of anomalies (default 100, at most 1000)
+   * @return matching anomalies and the total count
+   */
+  @GetMapping(&quot;/anomalies&quot;)
+  public AnomalyQueryResponse queryAnomalies(
+      @RequestHeader(ApiHeaders.CLIENT_ID) String clientId,
+      @PathVariable(&quot;metricId&quot;) Long metricId,
+      @RequestParam(&quot;from&quot;) Instant from,
+      @RequestParam(&quot;to&quot;) Instant to,
+      @RequestParam(value = &quot;minScore&quot;, defaultValue = &quot;0&quot;) double minScore,
+      @RequestParam(value = &quot;limit&quot;, defaultValue = &quot;100&quot;) int limit) {
+<span class="fc" id="L67">    return anomalyQueryService.query(clientId, metricId, from, to, minScore, limit);</span>
+  }
+
+  /**
+   * getMetricSummary: GET /metrics/{metricId}/summary.
+   *
+   * @param clientId the X-Client-Id header
+   * @param metricId the metric ID
+   * @param from inclusive start (ISO-8601)
+   * @param to inclusive end (ISO-8601)
+   * @param bucket optional bucket size: hour, 1h, day or 1d
+   * @return overall and per-bucket statistics
+   */
+  @GetMapping(&quot;/summary&quot;)
+  public MetricSummaryResponse getMetricSummary(
+      @RequestHeader(ApiHeaders.CLIENT_ID) String clientId,
+      @PathVariable(&quot;metricId&quot;) Long metricId,
+      @RequestParam(&quot;from&quot;) Instant from,
+      @RequestParam(&quot;to&quot;) Instant to,
+      @RequestParam(value = &quot;bucket&quot;, required = false) String bucket) {
+<span class="fc" id="L87">    return summaryService.summarize(clientId, metricId, from, to, bucket);</span>
+  }
+
+  /**
+   * updateDetectionRule: PUT /metrics/{metricId}/rule.
+   *
+   * @param clientId the X-Client-Id header
+   * @param metricId the metric ID
+   * @param dryRun if true (default), only report the effect of the new rule
+   * @param request the new rule
+   * @return anomaly counts under the old and new rules and the changed points
+   */
+  @PutMapping(&quot;/rule&quot;)
+  public RuleUpdateResponse updateDetectionRule(
+      @RequestHeader(ApiHeaders.CLIENT_ID) String clientId,
+      @PathVariable(&quot;metricId&quot;) Long metricId,
+      @RequestParam(value = &quot;dryRun&quot;, defaultValue = &quot;true&quot;) boolean dryRun,
+      @Valid @RequestBody UpdateRuleRequest request) {
+<span class="fc" id="L105">    return ruleUpdateService.update(clientId, metricId, request, dryRun);</span>
+  }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.13.202504020838</span></div></body></html>

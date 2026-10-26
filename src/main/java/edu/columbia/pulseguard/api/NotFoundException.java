@@ -2,7 +2,7 @@ package edu.columbia.pulseguard.api;
 
 import org.springframework.http.HttpStatus;
 
-// AI-assisted: Claude (Anthropic), generated, reviewed by Yuqi Zhang
+// AI-generated: Claude (Anthropic)
 /**
  * 404 Not Found: the metric does not exist or belongs to another client.
  */

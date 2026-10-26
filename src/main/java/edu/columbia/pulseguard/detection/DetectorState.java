@@ -2,7 +2,7 @@ package edu.columbia.pulseguard.detection;
 
 import java.util.List;
 
-// AI-assisted: Claude (Anthropic), generated, reviewed by Yuqi Zhang
+// AI-generated: Claude (Anthropic)
 /**
  * Immutable snapshot of what the detection engine needs to judge the next point.
  *

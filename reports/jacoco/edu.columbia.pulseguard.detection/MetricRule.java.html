@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>MetricRule.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">pulseguard</a> &gt; <a href="index.source.html" class="el_package">edu.columbia.pulseguard.detection</a> &gt; <span class="el_source">MetricRule.java</span></div><h1>MetricRule.java</h1><pre class="source lang-java linenums">package edu.columbia.pulseguard.detection;
+
+import edu.columbia.pulseguard.model.DetectionMethod;
+import edu.columbia.pulseguard.model.Metric;
+import java.util.Map;
+import java.util.Objects;
+
+// AI-generated: Claude (Anthropic)
+/**
+ * Immutable detection rule passed to the detection engine.
+ *
+ * @param method the detection method
+ * @param params detection parameters keyed by {@link RuleParams} constants
+ * @param warmUpSamples number of initial points that are never flagged
+ */
+public record MetricRule(DetectionMethod method, Map&lt;String, Double&gt; params, int warmUpSamples) {
+
+  /**
+   * Validates the components and copies the parameter map.
+   */
+<span class="fc" id="L21">  public MetricRule {</span>
+<span class="fc" id="L22">    Objects.requireNonNull(method, &quot;method&quot;);</span>
+<span class="fc" id="L23">    params = Map.copyOf(Objects.requireNonNull(params, &quot;params&quot;));</span>
+<span class="fc" id="L24">  }</span>
+
+  /**
+   * Builds the rule currently configured on a metric.
+   *
+   * @param metric the metric
+   * @return the metric's rule
+   */
+  public static MetricRule fromMetric(Metric metric) {
+<span class="fc" id="L33">    return new MetricRule(metric.getMethod(), metric.getParams(), metric.getWarmUpSamples());</span>
+  }
+
+  /**
+   * Returns a parameter value, or a default when it is not set.
+   *
+   * @param key a {@link RuleParams} key
+   * @param defaultValue the value to use when the key is absent
+   * @return the configured or default value
+   */
+  public double param(String key, double defaultValue) {
+<span class="fc" id="L44">    return params.getOrDefault(key, defaultValue);</span>
+  }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.13.202504020838</span></div></body></html>

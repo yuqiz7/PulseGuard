@@ -1,6 +1,6 @@
 package edu.columbia.pulseguard.api;
 
-// AI-assisted: Claude (Anthropic), generated, reviewed by Yuqi Zhang
+// AI-generated: Claude (Anthropic)
 /**
  * HTTP header names used by the API.
  */

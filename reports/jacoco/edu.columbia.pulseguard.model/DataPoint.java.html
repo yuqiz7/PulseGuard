@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>DataPoint.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">pulseguard</a> &gt; <a href="index.source.html" class="el_package">edu.columbia.pulseguard.model</a> &gt; <span class="el_source">DataPoint.java</span></div><h1>DataPoint.java</h1><pre class="source lang-java linenums">package edu.columbia.pulseguard.model;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.Index;
+import jakarta.persistence.Table;
+import java.time.Instant;
+
+// AI-generated: Claude (Anthropic)
+/**
+ * One submitted value of a metric, with the verdict computed when it was ingested.
+ */
+@Entity
+@Table(
+    name = &quot;data_point&quot;,
+    indexes = @Index(name = &quot;idx_data_point_metric_ts&quot;, columnList = &quot;metric_id, ts&quot;))
+public class DataPoint {
+
+  @Id
+  @GeneratedValue(strategy = GenerationType.IDENTITY)
+  private Long id;
+
+  @Column(name = &quot;metric_id&quot;, nullable = false)
+  private Long metricId;
+
+  @Column(name = &quot;ts&quot;, nullable = false)
+  private Instant ts;
+
+  @Column(name = &quot;point_value&quot;, nullable = false)
+  private double value;
+
+  @Column(name = &quot;is_anomaly&quot;, nullable = false)
+  private boolean anomaly;
+
+  @Column(name = &quot;score&quot;, nullable = false)
+  private double score;
+
+  /** Required by JPA. */
+<span class="fc" id="L42">  protected DataPoint() {</span>
+<span class="fc" id="L43">  }</span>
+
+  /**
+   * Creates a data point.
+   *
+   * @param metricId the metric this point belongs to
+   * @param ts the point's timestamp
+   * @param value the submitted value
+   * @param anomaly whether the point was flagged as an anomaly
+   * @param score the anomaly score computed for the point
+   */
+<span class="fc" id="L54">  public DataPoint(Long metricId, Instant ts, double value, boolean anomaly, double score) {</span>
+<span class="fc" id="L55">    this.metricId = metricId;</span>
+<span class="fc" id="L56">    this.ts = ts;</span>
+<span class="fc" id="L57">    this.value = value;</span>
+<span class="fc" id="L58">    this.anomaly = anomaly;</span>
+<span class="fc" id="L59">    this.score = score;</span>
+<span class="fc" id="L60">  }</span>
+
+  public Long getId() {
+<span class="nc" id="L63">    return id;</span>
+  }
+
+  public Long getMetricId() {
+<span class="fc" id="L67">    return metricId;</span>
+  }
+
+  public Instant getTs() {
+<span class="fc" id="L71">    return ts;</span>
+  }
+
+  public double getValue() {
+<span class="fc" id="L75">    return value;</span>
+  }
+
+  public boolean isAnomaly() {
+<span class="fc" id="L79">    return anomaly;</span>
+  }
+
+  public double getScore() {
+<span class="fc" id="L83">    return score;</span>
+  }
+
+  /**
+   * Overwrites the verdict (used when a rule change is applied and history is replayed).
+   *
+   * @param anomaly the new anomaly flag
+   * @param score the new anomaly score
+   */
+  public void setVerdict(boolean anomaly, double score) {
+<span class="fc" id="L93">    this.anomaly = anomaly;</span>
+<span class="fc" id="L94">    this.score = score;</span>
+<span class="fc" id="L95">  }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.13.202504020838</span></div></body></html>

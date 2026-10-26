@@ -4,7 +4,7 @@ import edu.columbia.pulseguard.model.Metric;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
 
-// AI-assisted: Claude (Anthropic), generated, reviewed by Yuqi Zhang
+// AI-generated: Claude (Anthropic)
 /**
  * Data access for {@link Metric}.
  */
