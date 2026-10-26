@@ -9,7 +9,7 @@ import jakarta.persistence.Index;
 import jakarta.persistence.Table;
 import java.time.Instant;
 
-// AI-assisted: Claude (Anthropic), generated, reviewed by Yuqi Zhang
+// AI-generated: Claude (Anthropic)
 /**
  * One submitted value of a metric, with the verdict computed when it was ingested.
  */

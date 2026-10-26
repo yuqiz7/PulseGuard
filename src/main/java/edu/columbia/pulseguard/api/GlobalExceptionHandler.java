@@ -11,7 +11,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
-// AI-assisted: Claude (Anthropic), generated, reviewed by Yuqi Zhang
+// AI-generated: Claude (Anthropic)
 /**
  * Converts exceptions into {@link ErrorResponse} bodies with the documented status codes.
  */

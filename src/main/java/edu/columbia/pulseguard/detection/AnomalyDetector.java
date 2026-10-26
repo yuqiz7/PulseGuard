@@ -1,6 +1,6 @@
 package edu.columbia.pulseguard.detection;
 
-// AI-assisted: Claude (Anthropic), generated, reviewed by Yuqi Zhang
+// AI-generated: Claude (Anthropic)
 /**
  * Contract of the detection engine (implemented in Area 2).
  *

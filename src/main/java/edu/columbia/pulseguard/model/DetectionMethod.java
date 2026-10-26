@@ -1,6 +1,6 @@
 package edu.columbia.pulseguard.model;
 
-// AI-assisted: Claude (Anthropic), generated, reviewed by Yuqi Zhang
+// AI-generated: Claude (Anthropic)
 /**
  * Detection methods a metric can be configured with.
  */

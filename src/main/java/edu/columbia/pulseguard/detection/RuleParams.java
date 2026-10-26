@@ -1,6 +1,6 @@
 package edu.columbia.pulseguard.detection;
 
-// AI-assisted: Claude (Anthropic), generated, reviewed by Yuqi Zhang
+// AI-generated: Claude (Anthropic)
 /**
  * Parameter keys and default values for detection rules, shared by all areas.
  */

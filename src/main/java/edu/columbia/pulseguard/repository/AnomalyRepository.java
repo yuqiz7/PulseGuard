@@ -9,7 +9,7 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
-// AI-assisted: Claude (Anthropic), generated, reviewed by Yuqi Zhang
+// AI-generated: Claude (Anthropic)
 /**
  * Data access for {@link Anomaly}.
  */
@@ -49,4 +49,16 @@ public interface AnomalyRepository extends JpaRepository<Anomaly, Long> {
   @Modifying(flushAutomatically = true, clearAutomatically = true)
   @Query("delete from Anomaly a where a.metricId = :metricId")
   int deleteByMetricId(@Param("metricId") Long metricId);
+
+  /**
+   * Deletes a metric's anomalies at or after a timestamp (used when a new rule is applied to the
+   * replayed part of the history); requires a transaction.
+   *
+   * @param metricId the metric ID
+   * @param from inclusive start of the deleted range
+   * @return the number of deleted anomalies
+   */
+  @Modifying(flushAutomatically = true)
+  @Query("delete from Anomaly a where a.metricId = :metricId and a.ts >= :from")
+  int deleteByMetricIdFrom(@Param("metricId") Long metricId, @Param("from") Instant from);
 }

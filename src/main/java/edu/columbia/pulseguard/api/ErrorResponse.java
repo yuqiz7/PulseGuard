@@ -2,7 +2,7 @@ package edu.columbia.pulseguard.api;
 
 import org.springframework.http.HttpStatus;
 
-// AI-assisted: Claude (Anthropic), generated, reviewed by Yuqi Zhang
+// AI-generated: Claude (Anthropic)
 /**
  * JSON body returned for every error.
  *

@@ -3,7 +3,7 @@ package edu.columbia.pulseguard;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
-// AI-assisted: Claude (Anthropic), generated, reviewed by Yuqi Zhang
+// AI-generated: Claude (Anthropic)
 /**
  * Entry point of the PulseGuard time-series anomaly detection service.
  */

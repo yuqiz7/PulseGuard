@@ -1,0 +1,1123 @@
+{
+  "info": {
+    "name": "PulseGuard API tests",
+    "description": "End-to-end API tests for PulseGuard. Run in order (Collection Runner or Newman) against a running service; each run uses a new client ID.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080"
+    },
+    {
+      "key": "clientId",
+      "value": ""
+    },
+    {
+      "key": "zscoreId",
+      "value": ""
+    },
+    {
+      "key": "thresholdId",
+      "value": ""
+    }
+  ],
+  "item": [
+    {
+      "name": "registerMetric",
+      "item": [
+        {
+          "name": "Register ZSCORE metric",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Client-Id",
+                "value": "{{clientId}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/metrics",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "metrics"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"name\": \"cpu\", \"unit\": \"%\", \"method\": \"ZSCORE\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// New client ID per run, so repeated runs do not collide.",
+                  "pm.collectionVariables.set(\"clientId\", \"postman-\" + Date.now());"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 201\", () => pm.response.to.have.status(201));",
+                  "const body = pm.response.json();",
+                  "pm.collectionVariables.set(\"zscoreId\", body.metricId);",
+                  "pm.test(\"defaults applied\", () => { pm.expect(body.params.windowSize).to.eql(30); pm.expect(body.params.zThreshold).to.eql(3); pm.expect(body.warmUpSamples).to.eql(10); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Register THRESHOLD metric",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Client-Id",
+                "value": "{{clientId}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/metrics",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "metrics"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"name\": \"temperature\", \"unit\": \"C\", \"method\": \"THRESHOLD\", \"params\": {\"upperBound\": 50}}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 201\", () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set(\"thresholdId\", pm.response.json().metricId);",
+                  "pm.test(\"warm-up defaults to 0 for THRESHOLD\", () => pm.expect(pm.response.json().warmUpSamples).to.eql(0));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Duplicate name is rejected",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Client-Id",
+                "value": "{{clientId}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/metrics",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "metrics"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"name\": \"cpu\", \"method\": \"EWMA\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 409\", () => pm.response.to.have.status(409));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Invalid rule is rejected",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Client-Id",
+                "value": "{{clientId}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/metrics",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "metrics"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"name\": \"bad\", \"method\": \"EWMA\", \"params\": {\"alpha\": 2}}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 400\", () => pm.response.to.have.status(400));",
+                  "pm.test(\"explains the problem\", () => pm.expect(pm.response.json().message).to.include(\"alpha\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Unknown parameter is rejected",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Client-Id",
+                "value": "{{clientId}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/metrics",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "metrics"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"name\": \"bad2\", \"method\": \"ZSCORE\", \"params\": {\"alpha\": 0.5}}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 400\", () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Missing X-Client-Id is rejected",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/metrics",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "metrics"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"name\": \"nobody\", \"method\": \"ZSCORE\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 401\", () => pm.response.to.have.status(401));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "submitDataPoints",
+      "item": [
+        {
+          "name": "Submit points to THRESHOLD metric",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Client-Id",
+                "value": "{{clientId}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/metrics/{{thresholdId}}/datapoints",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "metrics",
+                "{{thresholdId}}",
+                "datapoints"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"points\": [{\"timestamp\": \"2026-10-01T10:00:00Z\", \"value\": 10}, {\"timestamp\": \"2026-10-01T10:01:00Z\", \"value\": 20}, {\"timestamp\": \"2026-10-01T10:02:00Z\", \"value\": 60}, {\"timestamp\": \"2026-10-01T10:03:00Z\", \"value\": 40}]}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test(\"60 is the only anomaly in this batch\", () => pm.expect(body.anomalies).to.eql(1));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Submit another batch",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Client-Id",
+                "value": "{{clientId}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/metrics/{{thresholdId}}/datapoints",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "metrics",
+                "{{thresholdId}}",
+                "datapoints"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"points\": [{\"timestamp\": \"2026-10-01T11:00:00Z\", \"value\": 80}]}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"80 is anomalous\", () => pm.expect(pm.response.json().results[0].anomaly).to.be.true);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Out-of-order timestamp is rejected",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Client-Id",
+                "value": "{{clientId}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/metrics/{{thresholdId}}/datapoints",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "metrics",
+                "{{thresholdId}}",
+                "datapoints"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"points\": [{\"timestamp\": \"2026-10-01T09:00:00Z\", \"value\": 1}]}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 409\", () => pm.response.to.have.status(409));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Empty batch is rejected",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Client-Id",
+                "value": "{{clientId}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/metrics/{{thresholdId}}/datapoints",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "metrics",
+                "{{thresholdId}}",
+                "datapoints"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"points\": []}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 400\", () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Other client cannot submit",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Client-Id",
+                "value": "someone-else"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/metrics/{{thresholdId}}/datapoints",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "metrics",
+                "{{thresholdId}}",
+                "datapoints"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"points\": [{\"timestamp\": \"2026-10-02T00:00:00Z\", \"value\": 1}]}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 404\", () => pm.response.to.have.status(404));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "ZSCORE spike after warm-up is flagged",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Client-Id",
+                "value": "{{clientId}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/metrics/{{zscoreId}}/datapoints",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "metrics",
+                "{{zscoreId}}",
+                "datapoints"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"points\": [{\"timestamp\": \"2026-10-01T10:00:00Z\", \"value\": 10}, {\"timestamp\": \"2026-10-01T10:01:00Z\", \"value\": 12}, {\"timestamp\": \"2026-10-01T10:02:00Z\", \"value\": 10}, {\"timestamp\": \"2026-10-01T10:03:00Z\", \"value\": 12}, {\"timestamp\": \"2026-10-01T10:04:00Z\", \"value\": 10}, {\"timestamp\": \"2026-10-01T10:05:00Z\", \"value\": 12}, {\"timestamp\": \"2026-10-01T10:06:00Z\", \"value\": 10}, {\"timestamp\": \"2026-10-01T10:07:00Z\", \"value\": 12}, {\"timestamp\": \"2026-10-01T10:08:00Z\", \"value\": 10}, {\"timestamp\": \"2026-10-01T10:09:00Z\", \"value\": 12}, {\"timestamp\": \"2026-10-01T10:10:00Z\", \"value\": 10}, {\"timestamp\": \"2026-10-01T10:11:00Z\", \"value\": 12}, {\"timestamp\": \"2026-10-01T10:12:00Z\", \"value\": 100}]}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));",
+                  "const results = pm.response.json().results;",
+                  "pm.test(\"warm-up points are not flagged\", () => pm.expect(results.slice(0, 12).every(r => !r.anomaly)).to.be.true);",
+                  "pm.test(\"spike is flagged\", () => pm.expect(results[12].anomaly).to.be.true);"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "queryAnomalies",
+      "item": [
+        {
+          "name": "Query all anomalies",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Client-Id",
+                "value": "{{clientId}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/metrics/{{thresholdId}}/anomalies?from=2026-10-01T00:00:00Z&to=2026-10-01T23:59:59Z",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "metrics",
+                "{{thresholdId}}",
+                "anomalies"
+              ],
+              "query": [
+                {
+                  "key": "from",
+                  "value": "2026-10-01T00:00:00Z"
+                },
+                {
+                  "key": "to",
+                  "value": "2026-10-01T23:59:59Z"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"two anomalies\", () => pm.expect(pm.response.json().total).to.eql(2));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Filter by minimum score",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Client-Id",
+                "value": "{{clientId}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/metrics/{{thresholdId}}/anomalies?from=2026-10-01T00:00:00Z&to=2026-10-01T23:59:59Z&minScore=20",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "metrics",
+                "{{thresholdId}}",
+                "anomalies"
+              ],
+              "query": [
+                {
+                  "key": "from",
+                  "value": "2026-10-01T00:00:00Z"
+                },
+                {
+                  "key": "to",
+                  "value": "2026-10-01T23:59:59Z"
+                },
+                {
+                  "key": "minScore",
+                  "value": "20"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"only 80 has score >= 20\", () => { const b = pm.response.json(); pm.expect(b.total).to.eql(1); pm.expect(b.anomalies[0].value).to.eql(80); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Inverted range is rejected",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Client-Id",
+                "value": "{{clientId}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/metrics/{{thresholdId}}/anomalies?from=2026-10-02T00:00:00Z&to=2026-10-01T00:00:00Z",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "metrics",
+                "{{thresholdId}}",
+                "anomalies"
+              ],
+              "query": [
+                {
+                  "key": "from",
+                  "value": "2026-10-02T00:00:00Z"
+                },
+                {
+                  "key": "to",
+                  "value": "2026-10-01T00:00:00Z"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 400\", () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Missing from is rejected",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Client-Id",
+                "value": "{{clientId}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/metrics/{{thresholdId}}/anomalies?to=2026-10-01T00:00:00Z",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "metrics",
+                "{{thresholdId}}",
+                "anomalies"
+              ],
+              "query": [
+                {
+                  "key": "to",
+                  "value": "2026-10-01T00:00:00Z"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 400\", () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "getMetricSummary",
+      "item": [
+        {
+          "name": "Hourly summary",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Client-Id",
+                "value": "{{clientId}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/metrics/{{thresholdId}}/summary?from=2026-10-01T00:00:00Z&to=2026-10-01T23:59:59Z&bucket=hour",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "metrics",
+                "{{thresholdId}}",
+                "summary"
+              ],
+              "query": [
+                {
+                  "key": "from",
+                  "value": "2026-10-01T00:00:00Z"
+                },
+                {
+                  "key": "to",
+                  "value": "2026-10-01T23:59:59Z"
+                },
+                {
+                  "key": "bucket",
+                  "value": "hour"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));",
+                  "const b = pm.response.json();",
+                  "pm.test(\"overall statistics\", () => { pm.expect(b.overall.count).to.eql(5); pm.expect(b.overall.mean).to.eql(42); pm.expect(b.overall.anomalies).to.eql(2); });",
+                  "pm.test(\"two hourly buckets\", () => pm.expect(b.buckets.length).to.eql(2));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Unknown bucket is rejected",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Client-Id",
+                "value": "{{clientId}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/metrics/{{thresholdId}}/summary?from=2026-10-01T00:00:00Z&to=2026-10-01T23:59:59Z&bucket=week",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "metrics",
+                "{{thresholdId}}",
+                "summary"
+              ],
+              "query": [
+                {
+                  "key": "from",
+                  "value": "2026-10-01T00:00:00Z"
+                },
+                {
+                  "key": "to",
+                  "value": "2026-10-01T23:59:59Z"
+                },
+                {
+                  "key": "bucket",
+                  "value": "week"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 400\", () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "updateDetectionRule",
+      "item": [
+        {
+          "name": "Dry run reports effect",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "X-Client-Id",
+                "value": "{{clientId}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/metrics/{{thresholdId}}/rule",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "metrics",
+                "{{thresholdId}}",
+                "rule"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"method\": \"THRESHOLD\", \"params\": {\"upperBound\": 30}}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));",
+                  "const b = pm.response.json();",
+                  "pm.test(\"not applied\", () => pm.expect(b.applied).to.be.false);",
+                  "pm.test(\"one more anomaly\", () => { pm.expect(b.previousAnomalyCount).to.eql(2); pm.expect(b.newAnomalyCount).to.eql(3); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Apply new rule",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "X-Client-Id",
+                "value": "{{clientId}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/metrics/{{thresholdId}}/rule?dryRun=false",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "metrics",
+                "{{thresholdId}}",
+                "rule"
+              ],
+              "query": [
+                {
+                  "key": "dryRun",
+                  "value": "false"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"method\": \"THRESHOLD\", \"params\": {\"upperBound\": 30}}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"applied\", () => pm.expect(pm.response.json().applied).to.be.true);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Anomalies reflect new rule",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Client-Id",
+                "value": "{{clientId}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/metrics/{{thresholdId}}/anomalies?from=2026-10-01T00:00:00Z&to=2026-10-01T23:59:59Z",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "metrics",
+                "{{thresholdId}}",
+                "anomalies"
+              ],
+              "query": [
+                {
+                  "key": "from",
+                  "value": "2026-10-01T00:00:00Z"
+                },
+                {
+                  "key": "to",
+                  "value": "2026-10-01T23:59:59Z"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"three anomalies\", () => pm.expect(pm.response.json().total).to.eql(3));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Invalid rule is rejected",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "X-Client-Id",
+                "value": "{{clientId}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/metrics/{{thresholdId}}/rule",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "metrics",
+                "{{thresholdId}}",
+                "rule"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"method\": \"THRESHOLD\", \"params\": {}}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 400\", () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

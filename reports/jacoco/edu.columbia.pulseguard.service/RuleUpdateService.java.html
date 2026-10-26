@@ -1,0 +1,150 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>RuleUpdateService.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">pulseguard</a> &gt; <a href="index.source.html" class="el_package">edu.columbia.pulseguard.service</a> &gt; <span class="el_source">RuleUpdateService.java</span></div><h1>RuleUpdateService.java</h1><pre class="source lang-java linenums">package edu.columbia.pulseguard.service;
+
+import edu.columbia.pulseguard.detection.AnomalyDetector;
+import edu.columbia.pulseguard.detection.DetectionResult;
+import edu.columbia.pulseguard.detection.DetectorState;
+import edu.columbia.pulseguard.detection.MetricRule;
+import edu.columbia.pulseguard.detection.RuleValidator;
+import edu.columbia.pulseguard.dto.ChangedPoint;
+import edu.columbia.pulseguard.dto.RuleUpdateResponse;
+import edu.columbia.pulseguard.dto.UpdateRuleRequest;
+import edu.columbia.pulseguard.model.Anomaly;
+import edu.columbia.pulseguard.model.DataPoint;
+import edu.columbia.pulseguard.model.Metric;
+import edu.columbia.pulseguard.model.MetricStatistics;
+import edu.columbia.pulseguard.repository.AnomalyRepository;
+import edu.columbia.pulseguard.repository.DataPointRepository;
+import edu.columbia.pulseguard.repository.MetricRepository;
+import edu.columbia.pulseguard.repository.MetricStatisticsRepository;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import java.util.TreeMap;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+// AI-generated: Claude (Anthropic)
+/**
+ * Implements updateDetectionRule: replays the most recent history under a new rule, reports
+ * how the verdicts change, and optionally saves the rule and the recomputed verdicts.
+ *
+ * &lt;p&gt;To keep the request fast for metrics with long histories, at most {@link #REPLAY_LIMIT}
+ * of the most recent points are replayed; older points keep their existing verdicts.
+ */
+@Service
+public class RuleUpdateService {
+
+  /** Maximum number of most recent points replayed under a new rule. */
+  public static final int REPLAY_LIMIT = 10_000;
+  /** Maximum number of changed points listed in the response. */
+  public static final int MAX_CHANGED_POINTS = 100;
+
+  private final MetricLookupService lookupService;
+  private final MetricRepository metricRepository;
+  private final DataPointRepository dataPointRepository;
+  private final AnomalyRepository anomalyRepository;
+  private final MetricStatisticsRepository statisticsRepository;
+  private final AnomalyDetector detector;
+
+  /**
+   * Creates the service.
+   *
+   * @param lookupService shared client ID and ownership checks
+   * @param metricRepository metric access
+   * @param dataPointRepository data point access
+   * @param anomalyRepository anomaly access
+   * @param statisticsRepository statistics access (with row locking)
+   * @param detector the detection engine
+   */
+  public RuleUpdateService(MetricLookupService lookupService, MetricRepository metricRepository,
+      DataPointRepository dataPointRepository, AnomalyRepository anomalyRepository,
+<span class="fc" id="L63">      MetricStatisticsRepository statisticsRepository, AnomalyDetector detector) {</span>
+<span class="fc" id="L64">    this.lookupService = lookupService;</span>
+<span class="fc" id="L65">    this.metricRepository = metricRepository;</span>
+<span class="fc" id="L66">    this.dataPointRepository = dataPointRepository;</span>
+<span class="fc" id="L67">    this.anomalyRepository = anomalyRepository;</span>
+<span class="fc" id="L68">    this.statisticsRepository = statisticsRepository;</span>
+<span class="fc" id="L69">    this.detector = detector;</span>
+<span class="fc" id="L70">  }</span>
+
+  /**
+   * Evaluates a new rule against recent history and, unless this is a dry run, applies it.
+   *
+   * @param clientId the X-Client-Id header value
+   * @param metricId the metric ID
+   * @param request the new rule
+   * @param dryRun if true, nothing is saved
+   * @return anomaly counts under the old and new rules and the points whose flag changed
+   * @throws edu.columbia.pulseguard.api.NotFoundException if the metric is not the caller's
+   * @throws edu.columbia.pulseguard.api.BadRequestException if the new rule is invalid
+   */
+  @Transactional
+  public RuleUpdateResponse update(String clientId, Long metricId, UpdateRuleRequest request,
+      boolean dryRun) {
+<span class="fc" id="L86">    final Metric metric = lookupService.requireOwnedMetric(clientId, metricId);</span>
+<span class="fc" id="L87">    Map&lt;String, Double&gt; params = RuleValidator.normalizeParams(request.method(), request.params());</span>
+<span class="fc" id="L88">    int warmUpSamples = RuleValidator.normalizeWarmUp(request.method(), request.warmUpSamples());</span>
+<span class="fc" id="L89">    MetricRule newRule = new MetricRule(request.method(), params, warmUpSamples);</span>
+<span class="fc" id="L90">    final MetricStatistics stats = statisticsRepository.findByIdForUpdate(metricId)</span>
+<span class="pc" id="L91">        .orElseGet(() -&gt; new MetricStatistics(metricId));</span>
+
+<span class="fc" id="L93">    List&lt;DataPoint&gt; history = new ArrayList&lt;&gt;(dataPointRepository</span>
+<span class="fc" id="L94">        .findByMetricIdOrderByTsDesc(metricId, PageRequest.of(0, REPLAY_LIMIT)));</span>
+<span class="fc" id="L95">    Collections.reverse(history);</span>
+<span class="fc" id="L96">    final long totalPoints = dataPointRepository.countByMetricId(metricId);</span>
+
+<span class="fc" id="L98">    DetectorState state = DetectorState.empty();</span>
+<span class="fc" id="L99">    List&lt;DetectionResult&gt; results = new ArrayList&lt;&gt;();</span>
+<span class="fc" id="L100">    List&lt;ChangedPoint&gt; changedPoints = new ArrayList&lt;&gt;();</span>
+<span class="fc" id="L101">    int previousAnomalies = 0;</span>
+<span class="fc" id="L102">    int newAnomalies = 0;</span>
+<span class="fc" id="L103">    int changedCount = 0;</span>
+<span class="fc bfc" id="L104" title="All 2 branches covered.">    for (DataPoint point : history) {</span>
+<span class="fc" id="L105">      DetectionResult result = detector.evaluate(newRule, state, point.getValue());</span>
+<span class="fc" id="L106">      state = detector.update(newRule, state, point.getValue());</span>
+<span class="fc" id="L107">      results.add(result);</span>
+<span class="fc bfc" id="L108" title="All 2 branches covered.">      previousAnomalies += point.isAnomaly() ? 1 : 0;</span>
+<span class="fc bfc" id="L109" title="All 2 branches covered.">      newAnomalies += result.anomaly() ? 1 : 0;</span>
+<span class="fc bfc" id="L110" title="All 2 branches covered.">      if (result.anomaly() != point.isAnomaly()) {</span>
+<span class="fc" id="L111">        changedCount++;</span>
+<span class="pc bpc" id="L112" title="1 of 2 branches missed.">        if (changedPoints.size() &lt; MAX_CHANGED_POINTS) {</span>
+<span class="fc" id="L113">          changedPoints.add(new ChangedPoint(point.getTs(), point.getValue(), point.isAnomaly(),</span>
+<span class="fc" id="L114">              result.anomaly(), result.score()));</span>
+        }
+      }
+<span class="fc" id="L117">    }</span>
+
+<span class="fc bfc" id="L119" title="All 2 branches covered.">    if (!dryRun) {</span>
+<span class="fc" id="L120">      apply(metric, newRule, stats, state, history, results);</span>
+    }
+<span class="fc bfc" id="L122" title="All 2 branches covered.">    return new RuleUpdateResponse(metricId, !dryRun, newRule.method(), new TreeMap&lt;&gt;(params),</span>
+<span class="fc bfc" id="L123" title="All 2 branches covered.">        warmUpSamples, history.size(), totalPoints, totalPoints &gt; history.size(),</span>
+        previousAnomalies, newAnomalies, changedCount, changedPoints);
+  }
+
+  private void apply(Metric metric, MetricRule newRule, MetricStatistics stats,
+      DetectorState state, List&lt;DataPoint&gt; history, List&lt;DetectionResult&gt; results) {
+<span class="fc" id="L129">    metric.updateRule(newRule.method(), newRule.params(), newRule.warmUpSamples());</span>
+<span class="fc" id="L130">    metricRepository.save(metric);</span>
+<span class="pc bpc" id="L131" title="1 of 2 branches missed.">    if (!history.isEmpty()) {</span>
+<span class="fc" id="L132">      anomalyRepository.deleteByMetricIdFrom(metric.getId(), history.get(0).getTs());</span>
+    }
+<span class="fc" id="L134">    List&lt;Anomaly&gt; anomalies = new ArrayList&lt;&gt;();</span>
+<span class="fc bfc" id="L135" title="All 2 branches covered.">    for (int i = 0; i &lt; history.size(); i++) {</span>
+<span class="fc" id="L136">      DataPoint point = history.get(i);</span>
+<span class="fc" id="L137">      DetectionResult result = results.get(i);</span>
+<span class="fc" id="L138">      point.setVerdict(result.anomaly(), result.score());</span>
+<span class="fc bfc" id="L139" title="All 2 branches covered.">      if (result.anomaly()) {</span>
+<span class="fc" id="L140">        anomalies.add(new Anomaly(metric.getId(), point.getTs(), point.getValue(),</span>
+<span class="fc" id="L141">            result.score(), result.expectedLow(), result.expectedHigh(), newRule.method()));</span>
+      }
+    }
+<span class="fc" id="L144">    dataPointRepository.saveAll(history);</span>
+<span class="fc" id="L145">    anomalyRepository.saveAll(anomalies);</span>
+<span class="fc" id="L146">    stats.apply(state, stats.getLastTs());</span>
+<span class="fc" id="L147">    statisticsRepository.save(stats);</span>
+<span class="fc" id="L148">  }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.13.202504020838</span></div></body></html>

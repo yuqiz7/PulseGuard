@@ -1,0 +1,130 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>Metric.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">pulseguard</a> &gt; <a href="index.source.html" class="el_package">edu.columbia.pulseguard.model</a> &gt; <span class="el_source">Metric.java</span></div><h1>Metric.java</h1><pre class="source lang-java linenums">package edu.columbia.pulseguard.model;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Convert;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
+import java.time.Instant;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
+
+// AI-generated: Claude (Anthropic)
+/**
+ * A metric registered by a client program, together with its detection rule.
+ *
+ * &lt;p&gt;Metric names are unique per client. Rule parameters are stored as JSON (see
+ * {@link ParamsConverter}); valid keys are listed in
+ * {@link edu.columbia.pulseguard.detection.RuleParams}.
+ */
+@Entity
+@Table(
+    name = &quot;metric&quot;,
+    uniqueConstraints = @UniqueConstraint(
+        name = &quot;uk_metric_client_name&quot;, columnNames = {&quot;client_id&quot;, &quot;name&quot;}))
+public class Metric {
+
+  @Id
+  @GeneratedValue(strategy = GenerationType.IDENTITY)
+  private Long id;
+
+  @Column(name = &quot;client_id&quot;, nullable = false, length = 100)
+  private String clientId;
+
+  @Column(name = &quot;name&quot;, nullable = false, length = 100)
+  private String name;
+
+  @Column(name = &quot;unit&quot;, length = 50)
+  private String unit;
+
+  @Enumerated(EnumType.STRING)
+  @Column(name = &quot;method&quot;, nullable = false, length = 20)
+  private DetectionMethod method;
+
+<span class="fc" id="L50">  @Convert(converter = ParamsConverter.class)</span>
+  @Column(name = &quot;params&quot;, nullable = false, length = 2000)
+  private Map&lt;String, Double&gt; params = new HashMap&lt;&gt;();
+
+  @Column(name = &quot;warm_up_samples&quot;, nullable = false)
+  private int warmUpSamples;
+
+  @Column(name = &quot;created_at&quot;, nullable = false)
+  private Instant createdAt;
+
+  /** Required by JPA. */
+<span class="fc" id="L61">  protected Metric() {</span>
+<span class="fc" id="L62">  }</span>
+
+  /**
+   * Creates a new metric; the creation time is set to now.
+   *
+   * @param clientId the owning client program's ID (from the X-Client-Id header)
+   * @param name the metric name, unique for this client
+   * @param unit an optional unit label, may be null
+   * @param method the detection method
+   * @param params the detection parameters, keyed by {@code RuleParams} constants
+   * @param warmUpSamples number of initial points that are stored but never flagged
+   */
+  public Metric(String clientId, String name, String unit, DetectionMethod method,
+<span class="fc" id="L75">      Map&lt;String, Double&gt; params, int warmUpSamples) {</span>
+<span class="fc" id="L76">    this.clientId = clientId;</span>
+<span class="fc" id="L77">    this.name = name;</span>
+<span class="fc" id="L78">    this.unit = unit;</span>
+<span class="fc" id="L79">    this.method = method;</span>
+<span class="fc" id="L80">    this.params = new HashMap&lt;&gt;(params);</span>
+<span class="fc" id="L81">    this.warmUpSamples = warmUpSamples;</span>
+<span class="fc" id="L82">    this.createdAt = Instant.now();</span>
+<span class="fc" id="L83">  }</span>
+
+  public Long getId() {
+<span class="fc" id="L86">    return id;</span>
+  }
+
+  public String getClientId() {
+<span class="fc" id="L90">    return clientId;</span>
+  }
+
+  public String getName() {
+<span class="fc" id="L94">    return name;</span>
+  }
+
+  public String getUnit() {
+<span class="fc" id="L98">    return unit;</span>
+  }
+
+  public DetectionMethod getMethod() {
+<span class="fc" id="L102">    return method;</span>
+  }
+
+  public Map&lt;String, Double&gt; getParams() {
+<span class="fc" id="L106">    return Collections.unmodifiableMap(params);</span>
+  }
+
+  public int getWarmUpSamples() {
+<span class="fc" id="L110">    return warmUpSamples;</span>
+  }
+
+  public Instant getCreatedAt() {
+<span class="fc" id="L114">    return createdAt;</span>
+  }
+
+  /**
+   * Replaces the detection rule (used by updateDetectionRule when dryRun is false).
+   *
+   * @param method the new detection method
+   * @param params the new detection parameters
+   * @param warmUpSamples the new warm-up sample count
+   */
+  public void updateRule(DetectionMethod method, Map&lt;String, Double&gt; params, int warmUpSamples) {
+<span class="fc" id="L125">    this.method = method;</span>
+<span class="fc" id="L126">    this.params = new HashMap&lt;&gt;(params);</span>
+<span class="fc" id="L127">    this.warmUpSamples = warmUpSamples;</span>
+<span class="fc" id="L128">  }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.13.202504020838</span></div></body></html>
