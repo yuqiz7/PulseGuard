@@ -355,8 +355,8 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test(\"status is 200\", () => pm.response.to.have.status(200));",
-                  "pm.test(\"60 is the only anomaly in this batch\", () => pm.expect(body.anomalies).to.eql(1));",
-                  "pm.test(\"two anomalies\", () => pm.expect(body.anomalies).to.eql(1));"
+                  "const body = pm.response.json();",
+                  "pm.test(\"60 is the only anomaly in this batch\", () => pm.expect(body.anomalies).to.eql(1));"
                 ]
               }
             }
