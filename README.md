@@ -348,4 +348,4 @@ the class:
 
 | Member     | Tool               | Purpose | Representative prompts | Tokens |
 |------------|--------------------|---------|------------------------|--------|
-| Yuqi Zhang | Claude (claude.ai) | Generated the initial code from our T2 plan (build setup, entities, repositories, detection engine, endpoints, tests, CI, Postman collection, API docs); reviewed, ran through CI and fixed failing tests before merging | "Implement Area N of our T2 plan following Google Java Style, with unit, repository and API tests" | _to be filled_ |
+| Yuqi Zhang | Claude (claude.ai) | Generated the initial code from our T2 plan (build setup, entities, repositories, detection engine, endpoints, tests, CI, Postman collection, API docs); reviewed, ran through CI and fixed failing tests before merging | "Implement Area N of our T2 plan following Google Java Style, with unit, repository and API tests" | ≈111M total (≈0.4M output; most of the rest is the conversation context re-read on each turn) |
