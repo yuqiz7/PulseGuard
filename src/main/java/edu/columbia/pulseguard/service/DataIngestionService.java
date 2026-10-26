@@ -73,12 +73,12 @@ public class DataIngestionService {
   @Transactional
   public SubmitDataPointsResponse submit(String clientId, Long metricId,
       List<DataPointInput> points) {
-    Metric metric = lookupService.requireOwnedMetric(clientId, metricId);
+    final Metric metric = lookupService.requireOwnedMetric(clientId, metricId);
     MetricStatistics stats = statisticsRepository.findByIdForUpdate(metricId)
         .orElseGet(() -> new MetricStatistics(metricId));
     List<DataPointInput> ordered = new ArrayList<>(points);
     ordered.sort(Comparator.comparing(DataPointInput::timestamp));
-    Instant latest = checkStrictlyIncreasing(ordered, stats.getLastTs());
+    final Instant latest = checkStrictlyIncreasing(ordered, stats.getLastTs());
 
     MetricRule rule = MetricRule.fromMetric(metric);
     DetectorState state = stats.toDetectorState(
