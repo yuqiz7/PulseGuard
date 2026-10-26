@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>SummaryCalculator.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">pulseguard</a> &gt; <a href="index.source.html" class="el_package">edu.columbia.pulseguard.service</a> &gt; <span class="el_source">SummaryCalculator.java</span></div><h1>SummaryCalculator.java</h1><pre class="source lang-java linenums">package edu.columbia.pulseguard.service;
+
+import edu.columbia.pulseguard.dto.SummaryStats;
+import edu.columbia.pulseguard.model.DataPoint;
+import java.time.Instant;
+import java.util.List;
+
+// AI-generated: Claude (Anthropic)
+/**
+ * Computes summary statistics (count, mean, spread, extremes, anomaly rate, trend) of points.
+ */
+public final class SummaryCalculator {
+
+  private static final double SECONDS_PER_HOUR = 3600.0;
+
+  private SummaryCalculator() {
+  }
+
+  /**
+   * Summarizes a list of points.
+   *
+   * @param points the points, oldest first
+   * @return the statistics; only the counts are set when the list is empty
+   */
+  public static SummaryStats summarize(List&lt;DataPoint&gt; points) {
+<span class="fc bfc" id="L26" title="All 2 branches covered.">    if (points.isEmpty()) {</span>
+<span class="fc" id="L27">      return new SummaryStats(0, 0, null, null, null, null, null, null);</span>
+    }
+<span class="fc" id="L29">    final long count = points.size();</span>
+<span class="fc" id="L30">    final long anomalies = points.stream().filter(DataPoint::isAnomaly).count();</span>
+<span class="fc" id="L31">    double sum = 0;</span>
+<span class="fc" id="L32">    double min = Double.POSITIVE_INFINITY;</span>
+<span class="fc" id="L33">    double max = Double.NEGATIVE_INFINITY;</span>
+<span class="fc bfc" id="L34" title="All 2 branches covered.">    for (DataPoint point : points) {</span>
+<span class="fc" id="L35">      sum += point.getValue();</span>
+<span class="fc" id="L36">      min = Math.min(min, point.getValue());</span>
+<span class="fc" id="L37">      max = Math.max(max, point.getValue());</span>
+<span class="fc" id="L38">    }</span>
+<span class="fc" id="L39">    double mean = sum / count;</span>
+<span class="fc" id="L40">    double squaredDeviations = 0;</span>
+<span class="fc bfc" id="L41" title="All 2 branches covered.">    for (DataPoint point : points) {</span>
+<span class="fc" id="L42">      squaredDeviations += (point.getValue() - mean) * (point.getValue() - mean);</span>
+<span class="fc" id="L43">    }</span>
+<span class="fc" id="L44">    double stddev = Math.sqrt(squaredDeviations / count);</span>
+<span class="fc" id="L45">    return new SummaryStats(count, anomalies, mean, stddev, min, max,</span>
+<span class="fc" id="L46">        (double) anomalies / count, trendPerHour(points, mean));</span>
+  }
+
+  /**
+   * Least-squares slope of value against time in hours, or null if all timestamps are equal.
+   */
+  private static Double trendPerHour(List&lt;DataPoint&gt; points, double meanValue) {
+<span class="fc" id="L53">    Instant origin = points.get(0).getTs();</span>
+<span class="fc" id="L54">    double meanHours = 0;</span>
+<span class="fc bfc" id="L55" title="All 2 branches covered.">    for (DataPoint point : points) {</span>
+<span class="fc" id="L56">      meanHours += hoursSince(origin, point.getTs());</span>
+<span class="fc" id="L57">    }</span>
+<span class="fc" id="L58">    meanHours /= points.size();</span>
+<span class="fc" id="L59">    double covariance = 0;</span>
+<span class="fc" id="L60">    double timeVariance = 0;</span>
+<span class="fc bfc" id="L61" title="All 2 branches covered.">    for (DataPoint point : points) {</span>
+<span class="fc" id="L62">      double hours = hoursSince(origin, point.getTs()) - meanHours;</span>
+<span class="fc" id="L63">      covariance += hours * (point.getValue() - meanValue);</span>
+<span class="fc" id="L64">      timeVariance += hours * hours;</span>
+<span class="fc" id="L65">    }</span>
+<span class="fc bfc" id="L66" title="All 2 branches covered.">    if (timeVariance == 0) {</span>
+<span class="fc" id="L67">      return null;</span>
+    }
+<span class="fc" id="L69">    return covariance / timeVariance;</span>
+  }
+
+  private static double hoursSince(Instant origin, Instant ts) {
+<span class="fc" id="L73">    return (ts.toEpochMilli() - origin.toEpochMilli()) / 1000.0 / SECONDS_PER_HOUR;</span>
+  }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.13.202504020838</span></div></body></html>

@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>MetricLookupService.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">pulseguard</a> &gt; <a href="index.source.html" class="el_package">edu.columbia.pulseguard.service</a> &gt; <span class="el_source">MetricLookupService.java</span></div><h1>MetricLookupService.java</h1><pre class="source lang-java linenums">package edu.columbia.pulseguard.service;
+
+import edu.columbia.pulseguard.api.ApiHeaders;
+import edu.columbia.pulseguard.api.NotFoundException;
+import edu.columbia.pulseguard.api.UnauthorizedException;
+import edu.columbia.pulseguard.model.Metric;
+import edu.columbia.pulseguard.repository.MetricRepository;
+import org.springframework.stereotype.Service;
+
+// AI-generated: Claude (Anthropic)
+/**
+ * Shared access checks: validates the client ID and loads metrics owned by that client.
+ *
+ * &lt;p&gt;Every endpoint that takes a metricId must load the metric through
+ * {@link #requireOwnedMetric}, so another client's metric is reported as 404.
+ */
+@Service
+public class MetricLookupService {
+
+  private final MetricRepository metricRepository;
+
+  /**
+   * Creates the service.
+   *
+   * @param metricRepository metric data access
+   */
+<span class="fc" id="L27">  public MetricLookupService(MetricRepository metricRepository) {</span>
+<span class="fc" id="L28">    this.metricRepository = metricRepository;</span>
+<span class="fc" id="L29">  }</span>
+
+  /**
+   * Validates the X-Client-Id value.
+   *
+   * @param clientId the header value
+   * @return the trimmed client ID
+   * @throws UnauthorizedException if the value is null or blank
+   */
+  public String requireClientId(String clientId) {
+<span class="fc bfc" id="L39" title="All 4 branches covered.">    if (clientId == null || clientId.isBlank()) {</span>
+<span class="fc" id="L40">      throw new UnauthorizedException(&quot;Missing &quot; + ApiHeaders.CLIENT_ID + &quot; header&quot;);</span>
+    }
+<span class="fc" id="L42">    return clientId.trim();</span>
+  }
+
+  /**
+   * Loads a metric owned by the calling client.
+   *
+   * @param clientId the X-Client-Id header value
+   * @param metricId the metric ID from the URL
+   * @return the metric
+   * @throws UnauthorizedException if the client ID is missing or blank
+   * @throws NotFoundException if the metric does not exist or belongs to another client
+   */
+  public Metric requireOwnedMetric(String clientId, Long metricId) {
+<span class="fc" id="L55">    String owner = requireClientId(clientId);</span>
+<span class="fc" id="L56">    return metricRepository.findByIdAndClientId(metricId, owner)</span>
+<span class="fc" id="L57">        .orElseThrow(() -&gt; new NotFoundException(&quot;Metric &quot; + metricId + &quot; not found&quot;));</span>
+  }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.13.202504020838</span></div></body></html>

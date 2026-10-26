@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>MetricStatistics.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">pulseguard</a> &gt; <a href="index.source.html" class="el_package">edu.columbia.pulseguard.model</a> &gt; <span class="el_source">MetricStatistics.java</span></div><h1>MetricStatistics.java</h1><pre class="source lang-java linenums">package edu.columbia.pulseguard.model;
+
+import edu.columbia.pulseguard.detection.DetectorState;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
+import java.time.Instant;
+import java.util.List;
+
+// AI-generated: Claude (Anthropic)
+/**
+ * Incrementally maintained statistics of one metric (one row per metric).
+ *
+ * &lt;p&gt;Ingestion and rule updates lock this row with
+ * {@link edu.columbia.pulseguard.repository.MetricStatisticsRepository#findByIdForUpdate},
+ * so concurrent batches for the same metric are processed one at a time.
+ */
+@Entity
+@Table(name = &quot;metric_statistics&quot;)
+public class MetricStatistics {
+
+  @Id
+  @Column(name = &quot;metric_id&quot;)
+  private Long metricId;
+
+  @Column(name = &quot;sample_count&quot;, nullable = false)
+  private long sampleCount;
+
+  @Column(name = &quot;ewma&quot;)
+  private Double ewma;
+
+  @Column(name = &quot;ewma_variance&quot;)
+  private Double ewmaVariance;
+
+  @Column(name = &quot;last_ts&quot;)
+  private Instant lastTs;
+
+  /** Required by JPA. */
+<span class="fc" id="L40">  protected MetricStatistics() {</span>
+<span class="fc" id="L41">  }</span>
+
+  /**
+   * Creates empty statistics for a newly registered metric.
+   *
+   * @param metricId the metric these statistics belong to
+   */
+<span class="fc" id="L48">  public MetricStatistics(Long metricId) {</span>
+<span class="fc" id="L49">    this.metricId = metricId;</span>
+<span class="fc" id="L50">  }</span>
+
+  public Long getMetricId() {
+<span class="fc" id="L53">    return metricId;</span>
+  }
+
+  public long getSampleCount() {
+<span class="fc" id="L57">    return sampleCount;</span>
+  }
+
+  public Double getEwma() {
+<span class="fc" id="L61">    return ewma;</span>
+  }
+
+  public Double getEwmaVariance() {
+<span class="fc" id="L65">    return ewmaVariance;</span>
+  }
+
+  /**
+   * Timestamp of the latest stored point; new points must be strictly later.
+   *
+   * @return the latest timestamp, or null if no point has been stored yet
+   */
+  public Instant getLastTs() {
+<span class="fc" id="L74">    return lastTs;</span>
+  }
+
+  /**
+   * Builds the detector state from these statistics and the most recent stored values.
+   *
+   * @param recentValues the last windowSize stored values, oldest first
+   * @return the state to pass to the detection engine
+   */
+  public DetectorState toDetectorState(List&lt;Double&gt; recentValues) {
+<span class="fc" id="L84">    return new DetectorState(sampleCount, ewma, ewmaVariance, recentValues);</span>
+  }
+
+  /**
+   * Saves the detector state produced after processing points.
+   *
+   * @param state the updated detector state
+   * @param latestTs timestamp of the last processed point, or null if none
+   */
+  public void apply(DetectorState state, Instant latestTs) {
+<span class="fc" id="L94">    this.sampleCount = state.sampleCount();</span>
+<span class="fc" id="L95">    this.ewma = state.ewma();</span>
+<span class="fc" id="L96">    this.ewmaVariance = state.ewmaVariance();</span>
+<span class="fc" id="L97">    this.lastTs = latestTs;</span>
+<span class="fc" id="L98">  }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.13.202504020838</span></div></body></html>
