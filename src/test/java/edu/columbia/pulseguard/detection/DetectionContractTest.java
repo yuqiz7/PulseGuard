@@ -12,6 +12,7 @@ import java.util.Map;
 import org.junit.jupiter.api.Test;
 
 // AI-assisted: Claude (Anthropic), generated, reviewed by Yuqi Zhang
+
 /**
  * Unit tests for the immutable detection contract types.
  */
