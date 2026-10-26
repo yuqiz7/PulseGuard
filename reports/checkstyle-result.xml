@@ -28,11 +28,17 @@
 </file>
 <file name="C:\Users\joezh\PulseGuard\src\main\java\edu\columbia\pulseguard\detection\DetectorState.java">
 </file>
+<file name="C:\Users\joezh\PulseGuard\src\main\java\edu\columbia\pulseguard\detection\EwmaDetector.java">
+</file>
 <file name="C:\Users\joezh\PulseGuard\src\main\java\edu\columbia\pulseguard\detection\MetricRule.java">
 </file>
 <file name="C:\Users\joezh\PulseGuard\src\main\java\edu\columbia\pulseguard\detection\RuleParams.java">
 </file>
 <file name="C:\Users\joezh\PulseGuard\src\main\java\edu\columbia\pulseguard\detection\RuleValidator.java">
+</file>
+<file name="C:\Users\joezh\PulseGuard\src\main\java\edu\columbia\pulseguard\detection\ThresholdDetector.java">
+</file>
+<file name="C:\Users\joezh\PulseGuard\src\main\java\edu\columbia\pulseguard\detection\ZscoreDetector.java">
 </file>
 <file name="C:\Users\joezh\PulseGuard\src\main\java\edu\columbia\pulseguard\dto\AnomalyQueryResponse.java">
 </file>
@@ -114,7 +120,13 @@
 </file>
 <file name="C:\Users\joezh\PulseGuard\src\test\java\edu\columbia\pulseguard\detection\DetectionEngineTest.java">
 </file>
+<file name="C:\Users\joezh\PulseGuard\src\test\java\edu\columbia\pulseguard\detection\EwmaDetectorTest.java">
+</file>
 <file name="C:\Users\joezh\PulseGuard\src\test\java\edu\columbia\pulseguard\detection\RuleValidatorTest.java">
+</file>
+<file name="C:\Users\joezh\PulseGuard\src\test\java\edu\columbia\pulseguard\detection\ThresholdDetectorTest.java">
+</file>
+<file name="C:\Users\joezh\PulseGuard\src\test\java\edu\columbia\pulseguard\detection\ZscoreDetectorTest.java">
 </file>
 <file name="C:\Users\joezh\PulseGuard\src\test\java\edu\columbia\pulseguard\model\EntityModelTest.java">
 </file>
