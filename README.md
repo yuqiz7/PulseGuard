@@ -114,11 +114,82 @@ All errors return a JSON body:
 
 ### registerMetric
 
-_To be documented by the Area 3 owner._
+`POST /metrics` – registers a metric and its detection rule for the calling client.
+
+**Request body**
+
+| Field           | Type    | Required | Notes                                                                   |
+|-----------------|---------|----------|-------------------------------------------------------------------------|
+| `name`          | string  | yes      | Not blank, at most 100 characters, unique per client (surrounding spaces are trimmed) |
+| `unit`          | string  | no       | At most 50 characters                                                   |
+| `method`        | string  | yes      | `ZSCORE`, `EWMA` or `THRESHOLD`                                         |
+| `params`        | object  | depends  | Numbers keyed as below; omitted keys get the default; unknown keys are rejected |
+| `warmUpSamples` | integer | no       | 0–10000; the first N points are stored but never flagged. Default 10 (0 for `THRESHOLD`) |
+
+| Method      | `params`                                                                                    |
+|-------------|---------------------------------------------------------------------------------------------|
+| `ZSCORE`    | `windowSize` – whole number 2–10000, default 30; `zThreshold` – greater than 0, default 3   |
+| `EWMA`      | `alpha` – strictly between 0 and 1, default 0.3; `tolerance` – greater than 0, default 3    |
+| `THRESHOLD` | `lowerBound` and `upperBound` – both required, `lowerBound` < `upperBound`                  |
+
+**Response `201`** – the stored metric with the effective rule (defaults filled in). Use `id` in
+all other endpoints.
+
+**Side effects:** creates the metric and an empty statistics row. Nothing else changes.
+
+**Errors:** `400` invalid or unknown parameter, blank/overlong name, unknown method, malformed JSON;
+`401` missing `X-Client-Id`; `409` the client already has a metric with this name (other clients
+may use the same name).
+
+```bash
+curl -X POST http://localhost:8080/metrics \
+  -H "X-Client-Id: billing-service" -H "Content-Type: application/json" \
+  -d '{"name": "latency", "unit": "ms", "method": "ZSCORE", "params": {"windowSize": 20}}'
+```
+
+```json
+{ "id": 1, "name": "latency", "unit": "ms", "method": "ZSCORE",
+  "params": { "windowSize": 20.0, "zThreshold": 3.0 }, "warmUpSamples": 10,
+  "createdAt": "2026-10-20T12:00:00Z" }
+```
 
 ### submitDataPoints
 
-_To be documented by the Area 3 owner._
+`POST /metrics/{metricId}/datapoints` – ingests a batch of points and returns a verdict for each.
+
+**Request body**
+
+```json
+{ "dataPoints": [ { "timestamp": "2026-10-20T12:00:00Z", "value": 42.5 } ] }
+```
+
+- 1 to 1000 points per request; `timestamp` is ISO-8601 (UTC instant), `value` a finite number.
+- Timestamps must be strictly increasing within the batch and strictly later than the latest point
+  already stored for the metric. The first point of a new metric may have any timestamp.
+- Each point is judged against the statistics *before* it is incorporated, so an outlier cannot
+  hide itself. Points inside the warm-up count are stored but never flagged.
+
+**Response `200`**
+
+```json
+{ "accepted": 2, "anomalies": 1,
+  "results": [
+    { "timestamp": "2026-10-20T12:00:00Z", "value": 10.0, "anomaly": false, "score": 0.0,
+      "expectedLow": 0.0, "expectedHigh": 100.0 },
+    { "timestamp": "2026-10-20T12:01:00Z", "value": 150.0, "anomaly": true, "score": 50.0,
+      "expectedLow": 0.0, "expectedHigh": 100.0 } ] }
+```
+
+**Side effects:** stores the points with their verdicts, stores an anomaly record for each flagged
+point, and updates the metric's statistics (sample count, EWMA state, latest timestamp). All of
+this happens in one transaction: if the request fails, nothing from the batch is stored. The
+metric's statistics row is locked for the duration, so concurrent batches for the same metric are
+processed one after the other.
+
+**Errors:** `400` empty or oversized batch, missing/invalid `timestamp` or `value`, non-finite
+value, non-numeric `metricId`; `401` missing `X-Client-Id`; `404` metric does not exist or belongs
+to another client; `409` a timestamp is not later than the previous one (in the batch or already
+stored). Resend only points newer than the latest stored timestamp.
 
 ### queryAnomalies
 
@@ -169,7 +240,7 @@ so concurrent batches for the same metric are processed one at a time.
 | Unit test runner            | JUnit 5                                        | `pom.xml` (spring-boot-starter-test)       |
 | Mocking                     | Mockito                                        | `pom.xml` (spring-boot-starter-test)       |
 | Repository tests            | Spring `@DataJpaTest` with in-memory H2        | `src/test/resources/application.properties` |
-| API tests                   | Postman                                        | `postman/` (added with the endpoints)      |
+| API tests                   | Postman                                        | `postman/` (run top to bottom against a running service) |
 | Branch coverage             | JaCoCo                                         | `pom.xml`; report in `reports/` at release |
 | Style checker               | Checkstyle, Google Java Style (`google_checks.xml`) | `pom.xml`; report in `reports/` at release |
 | Continuous integration      | GitHub Actions (`./mvnw verify` on every PR)   | `.github/workflows/ci.yml`                 |
@@ -208,3 +279,4 @@ Code generated or debugged with AI is marked with a comment directly above the c
 | Member      | Tool                                   | Purpose                                                                                                      | Representative prompts                                                                                                  | Tokens        |
 |-------------|----------------------------------------|--------------------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------|---------------|
 | Yuqi Zhang  | Claude (Anthropic, claude.ai)          | Generated the Area 1 project skeleton: build configuration, entities, repositories, error handling, shared lookup service, tests, CI workflow and this README's setup sections | "Implement Area 1 (setup & persistence) of the attached T2 plan for our PulseGuard proposal, following Google Java Style, with unit and repository tests" | _to be filled_ |
+| Sidharth Sharma | Claude Code (Anthropic, Sonnet 5.5) | Generated the Area 3 registration and ingestion code (DTOs, rule validator, services, controllers), its unit/integration tests, the Postman collection and the registerMetric/submitDataPoints README sections | "Implement registerMetric and submitDataPoints (Area 3) from the T2 plan in four commits: registration service, registration endpoint, ingestion service, ingestion endpoint with Postman and docs" | 50,208 output; 102,066 input (+2,910,795 cache reads) |

@@ -1,0 +1,875 @@
+{
+  "info": {
+    "name": "PulseGuard - registration and ingestion (Area 3)",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "description": "Run top to bottom against a running service (default http://localhost:8080). The first request creates a fresh metric and stores its ID in {{metricId}}."
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080"
+    },
+    {
+      "key": "clientId",
+      "value": "postman-client"
+    },
+    {
+      "key": "otherClientId",
+      "value": "postman-other-client"
+    },
+    {
+      "key": "metricId",
+      "value": ""
+    },
+    {
+      "key": "metricName",
+      "value": ""
+    }
+  ],
+  "item": [
+    {
+      "name": "registerMetric - success (201)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Status is 201\", () => pm.response.to.have.status(201));",
+              "const body = pm.response.json();",
+              "pm.test(\"Returns the metric with its ID and effective rule\", () => {",
+              "  pm.expect(body.id).to.be.a(\"number\");",
+              "  pm.expect(body.name).to.eql(pm.collectionVariables.get(\"metricName\"));",
+              "  pm.expect(body.method).to.eql(\"THRESHOLD\");",
+              "  pm.expect(body.params.upperBound).to.eql(100);",
+              "});",
+              "pm.collectionVariables.set(\"metricId\", body.id);"
+            ]
+          }
+        },
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.collectionVariables.set(\"metricName\", \"postman-\" + Date.now());"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "X-Client-Id",
+            "value": "{{clientId}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/metrics",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "metrics"
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"{{metricName}}\",\n  \"unit\": \"ms\",\n  \"method\": \"THRESHOLD\",\n  \"params\": {\n    \"lowerBound\": 0,\n    \"upperBound\": 100\n  },\n  \"warmUpSamples\": 0\n}"
+        }
+      }
+    },
+    {
+      "name": "registerMetric - EWMA defaults are filled in (201)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Status is 201\", () => pm.response.to.have.status(201));",
+              "pm.test(\"Defaults applied\", () => {",
+              "  const body = pm.response.json();",
+              "  pm.expect(body.params.alpha).to.eql(0.3);",
+              "  pm.expect(body.params.tolerance).to.eql(3);",
+              "  pm.expect(body.warmUpSamples).to.eql(10);",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "X-Client-Id",
+            "value": "{{clientId}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/metrics",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "metrics"
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"{{metricName}}-ewma\",\n  \"method\": \"EWMA\"\n}"
+        }
+      }
+    },
+    {
+      "name": "registerMetric - duplicate name (409)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Status is 409\", () => pm.response.to.have.status(409));"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "X-Client-Id",
+            "value": "{{clientId}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/metrics",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "metrics"
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"{{metricName}}\",\n  \"unit\": \"ms\",\n  \"method\": \"THRESHOLD\",\n  \"params\": {\n    \"lowerBound\": 0,\n    \"upperBound\": 100\n  },\n  \"warmUpSamples\": 0\n}"
+        }
+      }
+    },
+    {
+      "name": "registerMetric - same name for another client (201)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Status is 201\", () => pm.response.to.have.status(201));"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "X-Client-Id",
+            "value": "{{otherClientId}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/metrics",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "metrics"
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"{{metricName}}\",\n  \"unit\": \"ms\",\n  \"method\": \"THRESHOLD\",\n  \"params\": {\n    \"lowerBound\": 0,\n    \"upperBound\": 100\n  },\n  \"warmUpSamples\": 0\n}"
+        }
+      }
+    },
+    {
+      "name": "registerMetric - missing X-Client-Id (401)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Status is 401\", () => pm.response.to.have.status(401));"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/metrics",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "metrics"
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"{{metricName}}\",\n  \"unit\": \"ms\",\n  \"method\": \"THRESHOLD\",\n  \"params\": {\n    \"lowerBound\": 0,\n    \"upperBound\": 100\n  },\n  \"warmUpSamples\": 0\n}"
+        }
+      }
+    },
+    {
+      "name": "registerMetric - EWMA alpha out of range (400)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Status is 400\", () => pm.response.to.have.status(400));"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "X-Client-Id",
+            "value": "{{clientId}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/metrics",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "metrics"
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"{{metricName}}-bad\",\n  \"method\": \"EWMA\",\n  \"params\": {\n    \"alpha\": 5\n  }\n}"
+        }
+      }
+    },
+    {
+      "name": "registerMetric - THRESHOLD without bounds (400)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Status is 400\", () => pm.response.to.have.status(400));"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "X-Client-Id",
+            "value": "{{clientId}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/metrics",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "metrics"
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"{{metricName}}-bad\",\n  \"method\": \"THRESHOLD\"\n}"
+        }
+      }
+    },
+    {
+      "name": "registerMetric - unknown method (400)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Status is 400\", () => pm.response.to.have.status(400));"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "X-Client-Id",
+            "value": "{{clientId}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/metrics",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "metrics"
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"{{metricName}}-bad\",\n  \"method\": \"MEDIAN\"\n}"
+        }
+      }
+    },
+    {
+      "name": "registerMetric - blank name (400)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Status is 400\", () => pm.response.to.have.status(400));"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "X-Client-Id",
+            "value": "{{clientId}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/metrics",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "metrics"
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \" \",\n  \"method\": \"EWMA\"\n}"
+        }
+      }
+    },
+    {
+      "name": "submitDataPoints - batch with one anomaly (200)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Status is 200\", () => pm.response.to.have.status(200));",
+              "const body = pm.response.json();",
+              "pm.test(\"All points accepted, one anomaly flagged\", () => {",
+              "  pm.expect(body.accepted).to.eql(3);",
+              "  pm.expect(body.anomalies).to.eql(1);",
+              "  pm.expect(body.results.map(r => r.anomaly)).to.eql([false, true, false]);",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "X-Client-Id",
+            "value": "{{clientId}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/metrics/{{metricId}}/datapoints",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "metrics",
+            "{{metricId}}",
+            "datapoints"
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"dataPoints\": [\n    {\n      \"timestamp\": \"2026-10-20T12:00:00Z\",\n      \"value\": 10\n    },\n    {\n      \"timestamp\": \"2026-10-20T12:01:00Z\",\n      \"value\": 150\n    },\n    {\n      \"timestamp\": \"2026-10-20T12:02:00Z\",\n      \"value\": 20\n    }\n  ]\n}"
+        }
+      }
+    },
+    {
+      "name": "submitDataPoints - timestamp not after last point (409)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Status is 409\", () => pm.response.to.have.status(409));"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "X-Client-Id",
+            "value": "{{clientId}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/metrics/{{metricId}}/datapoints",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "metrics",
+            "{{metricId}}",
+            "datapoints"
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"dataPoints\": [\n    {\n      \"timestamp\": \"2026-10-20T12:02:00Z\",\n      \"value\": 5\n    }\n  ]\n}"
+        }
+      }
+    },
+    {
+      "name": "submitDataPoints - out of order inside batch (409)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Status is 409\", () => pm.response.to.have.status(409));"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "X-Client-Id",
+            "value": "{{clientId}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/metrics/{{metricId}}/datapoints",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "metrics",
+            "{{metricId}}",
+            "datapoints"
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"dataPoints\": [\n    {\n      \"timestamp\": \"2026-10-20T13:01:00Z\",\n      \"value\": 5\n    },\n    {\n      \"timestamp\": \"2026-10-20T13:00:00Z\",\n      \"value\": 5\n    }\n  ]\n}"
+        }
+      }
+    },
+    {
+      "name": "submitDataPoints - later batch continues the series (200)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Status is 200\", () => pm.response.to.have.status(200));",
+              "pm.test(\"No anomaly\", () => pm.expect(pm.response.json().anomalies).to.eql(0));"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "X-Client-Id",
+            "value": "{{clientId}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/metrics/{{metricId}}/datapoints",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "metrics",
+            "{{metricId}}",
+            "datapoints"
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"dataPoints\": [\n    {\n      \"timestamp\": \"2026-10-20T12:03:00Z\",\n      \"value\": 50\n    }\n  ]\n}"
+        }
+      }
+    },
+    {
+      "name": "submitDataPoints - empty batch (400)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Status is 400\", () => pm.response.to.have.status(400));"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "X-Client-Id",
+            "value": "{{clientId}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/metrics/{{metricId}}/datapoints",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "metrics",
+            "{{metricId}}",
+            "datapoints"
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"dataPoints\": []\n}"
+        }
+      }
+    },
+    {
+      "name": "submitDataPoints - missing value (400)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Status is 400\", () => pm.response.to.have.status(400));"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "X-Client-Id",
+            "value": "{{clientId}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/metrics/{{metricId}}/datapoints",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "metrics",
+            "{{metricId}}",
+            "datapoints"
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"dataPoints\": [\n    {\n      \"timestamp\": \"2026-10-20T14:00:00Z\"\n    }\n  ]\n}"
+        }
+      }
+    },
+    {
+      "name": "submitDataPoints - invalid timestamp (400)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Status is 400\", () => pm.response.to.have.status(400));"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "X-Client-Id",
+            "value": "{{clientId}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/metrics/{{metricId}}/datapoints",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "metrics",
+            "{{metricId}}",
+            "datapoints"
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"dataPoints\": [\n    {\n      \"timestamp\": \"yesterday\",\n      \"value\": 1\n    }\n  ]\n}"
+        }
+      }
+    },
+    {
+      "name": "submitDataPoints - non-numeric metric ID (400)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Status is 400\", () => pm.response.to.have.status(400));"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "X-Client-Id",
+            "value": "{{clientId}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/metrics/abc/datapoints",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "metrics",
+            "abc",
+            "datapoints"
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"dataPoints\": [\n    {\n      \"timestamp\": \"2026-10-20T14:00:00Z\",\n      \"value\": 1\n    }\n  ]\n}"
+        }
+      }
+    },
+    {
+      "name": "submitDataPoints - missing X-Client-Id (401)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Status is 401\", () => pm.response.to.have.status(401));"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/metrics/{{metricId}}/datapoints",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "metrics",
+            "{{metricId}}",
+            "datapoints"
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"dataPoints\": [\n    {\n      \"timestamp\": \"2026-10-20T14:00:00Z\",\n      \"value\": 1\n    }\n  ]\n}"
+        }
+      }
+    },
+    {
+      "name": "submitDataPoints - metric owned by another client (404)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Status is 404\", () => pm.response.to.have.status(404));"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "X-Client-Id",
+            "value": "{{otherClientId}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/metrics/{{metricId}}/datapoints",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "metrics",
+            "{{metricId}}",
+            "datapoints"
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"dataPoints\": [\n    {\n      \"timestamp\": \"2026-10-20T14:00:00Z\",\n      \"value\": 1\n    }\n  ]\n}"
+        }
+      }
+    },
+    {
+      "name": "submitDataPoints - unknown metric (404)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Status is 404\", () => pm.response.to.have.status(404));"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "X-Client-Id",
+            "value": "{{clientId}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/metrics/999999999/datapoints",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "metrics",
+            "999999999",
+            "datapoints"
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"dataPoints\": [\n    {\n      \"timestamp\": \"2026-10-20T14:00:00Z\",\n      \"value\": 1\n    }\n  ]\n}"
+        }
+      }
+    }
+  ]
+}
