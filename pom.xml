@@ -21,6 +21,7 @@
     <java.version>17</java.version>
     <jacoco.version>0.8.13</jacoco.version>
     <checkstyle.plugin.version>3.6.0</checkstyle.plugin.version>
+    <cloud-sql-socket-factory.version>1.30.2</cloud-sql-socket-factory.version>
   </properties>
 
   <dependencies>
@@ -39,6 +40,14 @@
     <dependency>
       <groupId>org.postgresql</groupId>
       <artifactId>postgresql</artifactId>
+      <scope>runtime</scope>
+    </dependency>
+    <!-- Cloud SQL connector: lets the PostgreSQL driver reach a Cloud SQL instance by its
+         connection name (used on Cloud Run; inactive unless DB_URL names its socket factory). -->
+    <dependency>
+      <groupId>com.google.cloud.sql</groupId>
+      <artifactId>postgres-socket-factory</artifactId>
+      <version>${cloud-sql-socket-factory.version}</version>
       <scope>runtime</scope>
     </dependency>
     <dependency>

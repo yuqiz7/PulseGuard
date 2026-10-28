@@ -46,6 +46,8 @@ jobs:
           for i in $(seq 1 60); do curl -s -o /dev/null http://localhost:8080/metrics && break; sleep 2; done
       - name: Run Postman collection with Newman
         run: npx --yes newman run postman/PulseGuard.postman_collection.json
+      - name: Run demo collection with Newman
+        run: npx --yes newman run postman/PulseGuard-demo.postman_collection.json --env-var baseUrl=http://localhost:8080
       - name: Show service log on failure
         if: failure()
         run: cat app.log
