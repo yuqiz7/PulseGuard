@@ -1,0 +1,797 @@
+{
+  "info": {
+    "name": "PulseGuard demo",
+    "description": "Demo of PulseGuard as a shared anomaly-detection service used by three unrelated client programs: an ops monitoring backend, a payment risk backend and an IoT cold-chain gateway. Each folder acts as a different client (X-Client-Id). Set the collection variable baseUrl to the service URL, then send the requests in order.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "https://REPLACE-WITH-SERVICE-URL"
+    },
+    {
+      "key": "opsClient",
+      "value": ""
+    },
+    {
+      "key": "latencyId",
+      "value": ""
+    },
+    {
+      "key": "payClient",
+      "value": ""
+    },
+    {
+      "key": "txId",
+      "value": ""
+    },
+    {
+      "key": "iotClient",
+      "value": ""
+    },
+    {
+      "key": "freezerId",
+      "value": ""
+    }
+  ],
+  "item": [
+    {
+      "name": "1. Ops monitoring backend - API latency (ZSCORE)",
+      "item": [
+        {
+          "name": "Register p95 latency metric",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Client-Id",
+                "value": "{{opsClient}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/metrics",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "metrics"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"checkout-api-p95-latency\",\n  \"unit\": \"ms\",\n  \"method\": \"ZSCORE\",\n  \"params\": {\n    \"windowSize\": 30,\n    \"zThreshold\": 3\n  },\n  \"warmUpSamples\": 10\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Each run acts as a new client program, so the demo can be repeated.",
+                  "pm.collectionVariables.set(\"opsClient\", \"ops-monitor-\" + Date.now());"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"201 Created\", () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set(\"latencyId\", pm.response.json().metricId);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Send recent readings (normal)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Client-Id",
+                "value": "{{opsClient}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/metrics/{{latencyId}}/datapoints",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "metrics",
+                "{{latencyId}}",
+                "datapoints"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"points\": [\n    {\n      \"timestamp\": \"2026-10-28T13:00:00Z\",\n      \"value\": 118\n    },\n    {\n      \"timestamp\": \"2026-10-28T13:01:00Z\",\n      \"value\": 126\n    },\n    {\n      \"timestamp\": \"2026-10-28T13:02:00Z\",\n      \"value\": 114\n    },\n    {\n      \"timestamp\": \"2026-10-28T13:03:00Z\",\n      \"value\": 124\n    },\n    {\n      \"timestamp\": \"2026-10-28T13:04:00Z\",\n      \"value\": 117\n    },\n    {\n      \"timestamp\": \"2026-10-28T13:05:00Z\",\n      \"value\": 128\n    },\n    {\n      \"timestamp\": \"2026-10-28T13:06:00Z\",\n      \"value\": 115\n    },\n    {\n      \"timestamp\": \"2026-10-28T13:07:00Z\",\n      \"value\": 123\n    },\n    {\n      \"timestamp\": \"2026-10-28T13:08:00Z\",\n      \"value\": 119\n    },\n    {\n      \"timestamp\": \"2026-10-28T13:09:00Z\",\n      \"value\": 127\n    },\n    {\n      \"timestamp\": \"2026-10-28T13:10:00Z\",\n      \"value\": 116\n    },\n    {\n      \"timestamp\": \"2026-10-28T13:11:00Z\",\n      \"value\": 125\n    },\n    {\n      \"timestamp\": \"2026-10-28T13:12:00Z\",\n      \"value\": 121\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"200 OK\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"no anomalies in normal traffic\", () => pm.expect(pm.response.json().anomalies).to.eql(0));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Send live reading (edit the value)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Client-Id",
+                "value": "{{opsClient}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/metrics/{{latencyId}}/datapoints",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "metrics",
+                "{{latencyId}}",
+                "datapoints"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"points\": [\n    { \"timestamp\": \"{{$isoTimestamp}}\", \"value\": 410 }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Timestamp is the current time. Try 125 (normal) or 410 (latency spike)."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"200 OK\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"verdict returned\", () => pm.expect(pm.response.json().results[0]).to.have.property(\"anomaly\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Incident timeline: query anomalies",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Client-Id",
+                "value": "{{opsClient}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/metrics/{{latencyId}}/anomalies?from=2026-10-28T00:00:00Z&to=2026-12-31T23:59:59Z",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "metrics",
+                "{{latencyId}}",
+                "anomalies"
+              ],
+              "query": [
+                {
+                  "key": "from",
+                  "value": "2026-10-28T00:00:00Z"
+                },
+                {
+                  "key": "to",
+                  "value": "2026-12-31T23:59:59Z"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"200 OK\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "2. Payment risk backend - card transactions (EWMA)",
+      "item": [
+        {
+          "name": "Register transaction-rate metric",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Client-Id",
+                "value": "{{payClient}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/metrics",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "metrics"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"merchant-4417-card-tx-per-5min\",\n  \"unit\": \"transactions\",\n  \"method\": \"EWMA\",\n  \"params\": {\n    \"alpha\": 0.3,\n    \"tolerance\": 3\n  },\n  \"warmUpSamples\": 10\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set(\"payClient\", \"payments-risk-\" + Date.now());"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"201 Created\", () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set(\"txId\", pm.response.json().metricId);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Send batch with a card-testing burst",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Client-Id",
+                "value": "{{payClient}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/metrics/{{txId}}/datapoints",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "metrics",
+                "{{txId}}",
+                "datapoints"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"points\": [\n    {\n      \"timestamp\": \"2026-10-28T13:00:00Z\",\n      \"value\": 200\n    },\n    {\n      \"timestamp\": \"2026-10-28T13:05:00Z\",\n      \"value\": 214\n    },\n    {\n      \"timestamp\": \"2026-10-28T13:10:00Z\",\n      \"value\": 192\n    },\n    {\n      \"timestamp\": \"2026-10-28T13:15:00Z\",\n      \"value\": 209\n    },\n    {\n      \"timestamp\": \"2026-10-28T13:20:00Z\",\n      \"value\": 196\n    },\n    {\n      \"timestamp\": \"2026-10-28T13:25:00Z\",\n      \"value\": 211\n    },\n    {\n      \"timestamp\": \"2026-10-28T13:30:00Z\",\n      \"value\": 190\n    },\n    {\n      \"timestamp\": \"2026-10-28T13:35:00Z\",\n      \"value\": 207\n    },\n    {\n      \"timestamp\": \"2026-10-28T13:40:00Z\",\n      \"value\": 198\n    },\n    {\n      \"timestamp\": \"2026-10-28T13:45:00Z\",\n      \"value\": 213\n    },\n    {\n      \"timestamp\": \"2026-10-28T13:50:00Z\",\n      \"value\": 195\n    },\n    {\n      \"timestamp\": \"2026-10-28T13:55:00Z\",\n      \"value\": 205\n    },\n    {\n      \"timestamp\": \"2026-10-28T14:00:00Z\",\n      \"value\": 640\n    },\n    {\n      \"timestamp\": \"2026-10-28T14:05:00Z\",\n      \"value\": 203\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"200 OK\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"burst flagged\", () => pm.expect(pm.response.json().anomalies).to.eql(1));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Hourly summary for the risk report",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Client-Id",
+                "value": "{{payClient}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/metrics/{{txId}}/summary?from=2026-10-28T13:00:00Z&to=2026-10-28T14:59:59Z&bucket=hour",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "metrics",
+                "{{txId}}",
+                "summary"
+              ],
+              "query": [
+                {
+                  "key": "from",
+                  "value": "2026-10-28T13:00:00Z"
+                },
+                {
+                  "key": "to",
+                  "value": "2026-10-28T14:59:59Z"
+                },
+                {
+                  "key": "bucket",
+                  "value": "hour"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"200 OK\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"two hourly buckets\", () => pm.expect(pm.response.json().buckets.length).to.eql(2));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "3. IoT cold-chain gateway - freezer temperature (THRESHOLD)",
+      "item": [
+        {
+          "name": "Register freezer temperature metric",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Client-Id",
+                "value": "{{iotClient}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/metrics",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "metrics"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"vaccine-freezer-07-temp\",\n  \"unit\": \"C\",\n  \"method\": \"THRESHOLD\",\n  \"params\": {\n    \"lowerBound\": -25,\n    \"upperBound\": -15\n  },\n  \"warmUpSamples\": 0\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set(\"iotClient\", \"coldchain-gateway-\" + Date.now());"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"201 Created\", () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set(\"freezerId\", pm.response.json().metricId);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Send readings (door left open)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Client-Id",
+                "value": "{{iotClient}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/metrics/{{freezerId}}/datapoints",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "metrics",
+                "{{freezerId}}",
+                "datapoints"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"points\": [\n    {\n      \"timestamp\": \"2026-10-28T13:00:00Z\",\n      \"value\": -19.5\n    },\n    {\n      \"timestamp\": \"2026-10-28T13:01:00Z\",\n      \"value\": -19.8\n    },\n    {\n      \"timestamp\": \"2026-10-28T13:02:00Z\",\n      \"value\": -20.1\n    },\n    {\n      \"timestamp\": \"2026-10-28T13:03:00Z\",\n      \"value\": -19.7\n    },\n    {\n      \"timestamp\": \"2026-10-28T13:04:00Z\",\n      \"value\": -18.9\n    },\n    {\n      \"timestamp\": \"2026-10-28T13:05:00Z\",\n      \"value\": -17.2\n    },\n    {\n      \"timestamp\": \"2026-10-28T13:06:00Z\",\n      \"value\": -14.1\n    },\n    {\n      \"timestamp\": \"2026-10-28T13:07:00Z\",\n      \"value\": -12.6\n    },\n    {\n      \"timestamp\": \"2026-10-28T13:08:00Z\",\n      \"value\": -16.8\n    },\n    {\n      \"timestamp\": \"2026-10-28T13:09:00Z\",\n      \"value\": -19.0\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"200 OK\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"two excursions flagged\", () => pm.expect(pm.response.json().anomalies).to.eql(2));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Dry run: tighter upper bound",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "X-Client-Id",
+                "value": "{{iotClient}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/metrics/{{freezerId}}/rule?dryRun=true",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "metrics",
+                "{{freezerId}}",
+                "rule"
+              ],
+              "query": [
+                {
+                  "key": "dryRun",
+                  "value": "true"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"method\": \"THRESHOLD\",\n  \"params\": {\n    \"lowerBound\": -25,\n    \"upperBound\": -18\n  },\n  \"warmUpSamples\": 0\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"200 OK\", () => pm.response.to.have.status(200));",
+                  "const b = pm.response.json();",
+                  "pm.test(\"nothing applied, effect reported\", () => { pm.expect(b.applied).to.eql(false); pm.expect(b.previousAnomalyCount).to.eql(2); pm.expect(b.newAnomalyCount).to.eql(4); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Apply the tighter rule",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "X-Client-Id",
+                "value": "{{iotClient}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/metrics/{{freezerId}}/rule?dryRun=false",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "metrics",
+                "{{freezerId}}",
+                "rule"
+              ],
+              "query": [
+                {
+                  "key": "dryRun",
+                  "value": "false"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"method\": \"THRESHOLD\",\n  \"params\": {\n    \"lowerBound\": -25,\n    \"upperBound\": -18\n  },\n  \"warmUpSamples\": 0\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"200 OK\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"applied\", () => pm.expect(pm.response.json().applied).to.eql(true));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "4. Client isolation and error handling",
+      "item": [
+        {
+          "name": "Ops client cannot see the freezer metric",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Client-Id",
+                "value": "{{opsClient}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/metrics/{{freezerId}}/anomalies?from=2026-10-28T00:00:00Z&to=2026-12-31T23:59:59Z",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "metrics",
+                "{{freezerId}}",
+                "anomalies"
+              ],
+              "query": [
+                {
+                  "key": "from",
+                  "value": "2026-10-28T00:00:00Z"
+                },
+                {
+                  "key": "to",
+                  "value": "2026-12-31T23:59:59Z"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"404 Not Found\", () => pm.response.to.have.status(404));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Missing X-Client-Id",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/metrics/{{freezerId}}/anomalies?from=2026-10-28T00:00:00Z&to=2026-12-31T23:59:59Z",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "metrics",
+                "{{freezerId}}",
+                "anomalies"
+              ],
+              "query": [
+                {
+                  "key": "from",
+                  "value": "2026-10-28T00:00:00Z"
+                },
+                {
+                  "key": "to",
+                  "value": "2026-12-31T23:59:59Z"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"401 Unauthorized\", () => pm.response.to.have.status(401));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Re-sending old readings is rejected",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Client-Id",
+                "value": "{{iotClient}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/metrics/{{freezerId}}/datapoints",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "metrics",
+                "{{freezerId}}",
+                "datapoints"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"points\": [\n    {\n      \"timestamp\": \"2026-10-28T13:00:00Z\",\n      \"value\": -19.5\n    },\n    {\n      \"timestamp\": \"2026-10-28T13:01:00Z\",\n      \"value\": -19.8\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"409 Conflict\", () => pm.response.to.have.status(409));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Invalid rule is rejected",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "X-Client-Id",
+                "value": "{{opsClient}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/metrics/{{latencyId}}/rule",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "metrics",
+                "{{latencyId}}",
+                "rule"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"method\": \"EWMA\",\n  \"params\": {\n    \"alpha\": 2\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"400 Bad Request\", () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

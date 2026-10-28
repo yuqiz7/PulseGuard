@@ -26,6 +26,8 @@ Yuqi Zhang (yz5072)
 
 - Java 17, Spring Boot 3.5 (Spring Web, Spring Data JPA, Bean Validation)
 - PostgreSQL 16 (local: Docker; cloud: GCP Cloud SQL)
+- Deployment: Docker image on GCP Cloud Run, connected to Cloud SQL through the Cloud SQL Java
+  connector (`postgres-socket-factory`)
 - Maven (via the included Maven Wrapper – no separate Maven installation needed)
 
 ## Build, run and test
@@ -66,6 +68,11 @@ error cases. Start the service (see below), then either:
 Each run uses a new client ID, so it can be repeated against the same database. CI runs the
 collection on every pull request.
 
+`postman/PulseGuard-demo.postman_collection.json` is the demo walkthrough: three unrelated client
+programs (an ops monitoring backend, a payment risk backend and an IoT cold-chain gateway), each
+with its own `X-Client-Id`, plus client isolation and error cases. Set its `baseUrl` collection
+variable to the service URL (for Newman: `--env-var baseUrl=<url>`). CI runs it too.
+
 ### Run locally with PostgreSQL
 
 ```bash
@@ -91,6 +98,24 @@ Connection settings come from environment variables (defaults match `docker-comp
 ```
 
 Uses a file-based H2 database in `./data` instead of PostgreSQL (for quick local demos only).
+
+### Deploy to Google Cloud (Cloud Run + Cloud SQL)
+
+The service runs on Cloud Run from the `Dockerfile` and stores its data in a Cloud SQL for
+PostgreSQL 16 instance. The database password is kept in Secret Manager; the Cloud Run service
+account has the roles `Cloud SQL Client` and `Secret Manager Secret Accessor`. From a clone of
+this repository in Cloud Shell, with `PROJECT_ID`, `REGION`, `SQL_INSTANCE`, `DB_NAME`,
+`DB_USER` and `SA` (service account e-mail) set:
+
+```bash
+gcloud run deploy pulseguard --source . --region=$REGION --service-account=$SA \
+  --allow-unauthenticated --memory=1Gi --cpu=1 --min-instances=1 --max-instances=3 --cpu-boost \
+  --set-env-vars="DB_URL=jdbc:postgresql:///$DB_NAME?cloudSqlInstance=$PROJECT_ID:$REGION:$SQL_INSTANCE&socketFactory=com.google.cloud.sql.postgres.SocketFactory,DB_USER=$DB_USER" \
+  --set-secrets=DB_PASSWORD=pulseguard-db-password:latest
+```
+
+Tables are created on first startup. `--min-instances=1` keeps one instance warm, so requests
+never wait for a cold start.
 
 ## API
 
@@ -310,6 +335,8 @@ so concurrent batches for the same metric are processed one at a time.
 | Style checker               | Checkstyle, Google Java Style (`google_checks.xml`) | `pom.xml`; report: `reports/checkstyle-result.xml` |
 | Continuous integration      | GitHub Actions: `./mvnw verify`, then the Postman collection against a running service | `.github/workflows/ci.yml` |
 | Local database              | PostgreSQL 16 in Docker                        | `docker-compose.yml`                       |
+| Container image             | Docker (multi-stage: Maven Wrapper build, JRE runtime) | `Dockerfile`, `.dockerignore`      |
+| Hosting                     | GCP Cloud Run + Cloud SQL for PostgreSQL       | see [Deploy to Google Cloud](#deploy-to-google-cloud-cloud-run--cloud-sql) |
 | Project management          | GitHub Projects + Issues                       | link at the top of this README             |
 
 ## Project structure
@@ -328,6 +355,8 @@ src/main/java/edu/columbia/pulseguard/
   service/                     One service per operation; MetricLookupService performs the shared
                                client/ownership checks
 src/test/java/...              Tests, mirroring the main package structure
+postman/                       API test collection (CI) and demo collection
+Dockerfile                     Container image used by Cloud Run
 ```
 
 ## Third-party code
@@ -348,4 +377,5 @@ the class:
 
 | Member     | Tool               | Purpose | Representative prompts | Tokens |
 |------------|--------------------|---------|------------------------|--------|
+| Yuqi Zhang | Claude (claude.ai) | T3: Cloud Run deployment (`Dockerfile`, Cloud SQL connector, deployment steps) and the demo Postman collection; reviewed and verified against the deployed service | "Deploy PulseGuard to Cloud Run with Cloud SQL and write a demo that shows it serving several unrelated client backends" | Counted at Iteration 2 |
 | Yuqi Zhang | Claude (claude.ai) | Generated the initial code from our T2 plan (build setup, entities, repositories, detection engine, endpoints, tests, CI, Postman collection, API docs); reviewed, ran through CI and fixed failing tests before merging | "Implement Area N of our T2 plan following Google Java Style, with unit, repository and API tests" | ≈111M total (≈0.4M output; most of the rest is the conversation context re-read on each turn) |
